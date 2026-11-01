@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Make a standard drag-to-Applications disk image, without third-party packaging tools.
 set -euo pipefail
+trap 'printf "DMG packaging failed at line %s\n" "$LINENO" >&2' ERR
 [[ "$(uname -s)" == "Darwin" ]] || { echo "DMG packaging requires macOS." >&2; exit 1; }
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 APP=${1:-"$ROOT_DIR/build/TokenCurrent.app"}
@@ -25,9 +26,20 @@ ln -s /Applications "$WORK_DIR/stage/Applications"
 app_kb=$(du -sk "$APP" | awk '{print $1}')
 size_mb=$((app_kb / 1024 + 32))
 if [[ "$size_mb" -lt 64 ]]; then size_mb=64; fi
-hdiutil create -quiet -ov -fs HFS+ -size "${size_mb}m" -volname "Token Current" \
-  -srcfolder "$WORK_DIR/stage" -format UDRW "$WORK_DIR/writable.dmg"
-hdiutil attach -quiet -readwrite -noverify -noautoopen -mountpoint "$MOUNT_DIR" "$WORK_DIR/writable.dmg"
+# DiskImages services can briefly be busy on fresh hosted Macs. Keep diagnostics
+# visible and retry the idempotent create operation before failing the build.
+create_image() {
+  local attempt
+  for attempt in 1 2 3; do
+    if hdiutil create -ov -fs HFS+ -size "${size_mb}m" -volname "Token Current" \
+      -srcfolder "$WORK_DIR/stage" -format UDRW "$WORK_DIR/writable.dmg"; then return 0; fi
+    echo "Disk image creation attempt $attempt failed; retrying…" >&2
+    sleep "$attempt"
+  done
+  return 1
+}
+create_image
+hdiutil attach -readwrite -noverify -noautoopen -mountpoint "$MOUNT_DIR" "$WORK_DIR/writable.dmg"
 mounted=1
 
 # Finder customization is optional: a plain disk image still has the app and Applications shortcut.
@@ -69,6 +81,6 @@ wait "$watchdog_pid" 2>/dev/null || true
 sync
 hdiutil detach "$MOUNT_DIR" -quiet
 mounted=0
-hdiutil convert "$WORK_DIR/writable.dmg" -quiet -ov -format UDZO -imagekey zlib-level=9 -o "$OUTPUT"
+hdiutil convert "$WORK_DIR/writable.dmg" -ov -format UDZO -imagekey zlib-level=9 -o "$OUTPUT"
 hdiutil verify "$OUTPUT"
 printf 'Created %s\n' "$OUTPUT"
