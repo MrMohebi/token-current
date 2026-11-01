@@ -1,0 +1,31 @@
+name: Verify Token Current
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Swift toolchain
+        run: swift --version
+      - name: Test accounting and file monitoring
+        run: swift test
+      - name: Check scripts
+        run: bash -n Scripts/package_app.sh Scripts/compile_and_run.sh Scripts/sign-and-notarize.sh
+      - name: Build universal native application
+        run: ARCHES="arm64 x86_64" SIGNING_MODE=adhoc Scripts/package_app.sh release
+      - name: Verify bundle
+        run: |
+          plutil -lint build/TokenCurrent.app/Contents/Info.plist
+          codesign --verify --deep --strict --verbose=2 build/TokenCurrent.app
+          lipo -verify_arch arm64 x86_64 build/TokenCurrent.app/Contents/MacOS/TokenCurrent
+      - name: Archive development build
+        run: ditto -c -k --keepParent build/TokenCurrent.app build/TokenCurrent-development.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TokenCurrent-macos-development
+          path: build/TokenCurrent-development.zip
