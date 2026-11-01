@@ -49,7 +49,7 @@ final class MonitorModel {
                   let sample = machine.snapshot, sample.day == NetworkSnapshot.utcDay(.now) else { return false }
             return selectedProviders.contains { p in
                 guard let value = sample.providers[p.rawValue] else { return false }
-                return value.health == "ready" || value.totals.total > 0
+                return value.health == "ready" || value.health == "paused" || value.totals.total > 0
             }
         })
     }

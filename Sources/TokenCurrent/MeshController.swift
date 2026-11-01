@@ -119,7 +119,7 @@ final class MeshController {
         var combined = MeshAccounting.combine(result, selectedID: selectedID, at: snapshot.timestamp)
         let selection = "\(mode.rawValue):\(selectedID)"
         if selection != graphSelection { graph = []; graphSelection = selection }
-        graph.removeAll { snapshot.timestamp.timeIntervalSince($0.time) >= 60 || $0.time > snapshot.timestamp }
+        graph.removeAll { snapshot.timestamp.timeIntervalSince($0.time) >= 60 || $0.time >= snapshot.timestamp }
         graph.append(RatePoint(time: snapshot.timestamp, claude: combined.rates[.claude] ?? 0, codex: combined.rates[.codex] ?? 0))
         combined.graph = graph
         return combined

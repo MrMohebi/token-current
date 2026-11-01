@@ -26,7 +26,7 @@ public struct NetworkSnapshot: Codable, Sendable {
         observedAt = local.timestamp.timeIntervalSince1970
         day = Self.utcDay(local.timestamp)
         providers = Dictionary(uniqueKeysWithValues: Provider.allCases.map { p in
-            let health = local.paused ? "paused" : local.importing ? "importing" : Self.wireHealth(local.health[p])
+            let health = local.paused && local.health[p] == .ready ? "paused" : local.importing ? "importing" : Self.wireHealth(local.health[p])
             return (p.rawValue, NetworkProvider(health: health, rate: local.rate(for: p) ?? 0, totals: local.totals[p] ?? .zero))
         })
     }
