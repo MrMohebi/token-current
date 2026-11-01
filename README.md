@@ -2,7 +2,7 @@
 
 A native macOS menu bar meter for **reported AI token consumption**. Track Claude Code and Codex together, with a rolling rate, 60-second graph, provider filters, and today's input, output, and cached tokens.
 
-**Requires macOS 14+ and a Swift 6 toolchain (Xcode 16+).** There is no web runtime, server, login, API key, or telemetry. This repository includes the application source and packaging workflow; a signed release is not included.
+**Requires macOS 14+.** Download the universal application from [GitHub Releases](https://github.com/MrMohebi/token-current/releases). Building from source requires a Swift 6 toolchain (Xcode 16+). There is no web runtime, server, login, API key, or telemetry. Initial release downloads are ad-hoc signed, without Apple Developer ID notarization; macOS may require **System Settings → Privacy & Security → Open Anyway** on first launch.
 
 ## Build and run on a Mac
 
@@ -35,7 +35,7 @@ The scripts derive from the macOS SwiftPM packaging skill and generate the app i
 3. Choose All, Claude, or Codex. The selection applies to the menu bar, headline rate, graph, provider rows, and today's totals.
 4. Open Settings to change display density, data folders, or login launch. `⌘,` opens Settings; `⇧⌘P` pauses/resumes monitoring while the popover is open. The More menu includes Quit (`⌘Q`).
 
-Default data homes are `~/.claude` and `~/.codex`. Claude transcripts are read under `projects/**/*.jsonl`; Codex rollouts under `sessions/**/*.jsonl` and `archived_sessions/**/*.jsonl`. Nested agent directories are included. For nonstandard installations, select the corresponding **data home**, not an individual transcript, and click **Apply folders**.
+First launch detects `CLAUDE_CONFIG_DIR` and `CODEX_HOME` when available to the app process. Otherwise it uses `~/.claude` (falling back to `$XDG_CONFIG_HOME/claude` or `~/.config/claude` if the standard location has no projects) and `~/.codex`. Claude transcripts are read under `projects/**/*.jsonl`; Codex rollouts under `sessions/**/*.jsonl` and `archived_sessions/**/*.jsonl`. Nested agent directories are included. Environment path lists select the first valid data home; simultaneous monitoring of multiple data homes is not included. Saved folder selections take precedence. For nonstandard installations, select the corresponding **data home**, not an individual transcript, and click **Apply folders**. Apps opened from Finder may not inherit variables set in your terminal.
 
 Waiting means no supported usage has been found yet. A missing folder, access failure, or unsupported record format has an explicit status. An em dash means no current measurement; zero means a connected source reported no new tokens in the last 10 seconds. If only one provider is connected, All shows that provider's rate and the other provider's status remains visible.
 
@@ -53,7 +53,7 @@ Claude input includes its separate uncached, cache-read, and cache-creation fiel
 
 Forked Codex sessions exclude inherited counters using session metadata and the latest request's usage when present. For older fork logs that lack both copied history and last-request usage, the first snapshot establishes a conservative baseline; its own first request may be undercounted. Decreasing/stale cumulative snapshots never subtract usage or generate a second charge. Unknown formats are reported rather than guessed. Compressed/non-JSONL session archives and remote sessions without local logs are not supported in v1.
 
-The adapter contracts are based on [Claude cache accounting](https://platform.claude.com/docs/en/build-with-claude/prompt-caching), [Codex's protocol](https://github.com/openai/codex/blob/main/codex-rs/protocol/src/protocol.rs), and [Codex rollout serialization](https://github.com/openai/codex/blob/main/codex-rs/history/src/rollout_payload.rs).
+The adapter contracts are based on [Claude cache accounting](https://platform.claude.com/docs/en/build-with-claude/prompt-caching), [Codex's protocol](https://github.com/openai/codex/blob/main/codex-rs/protocol/src/protocol.rs), and [Codex rollout serialization](https://github.com/openai/codex/blob/main/codex-rs/history/src/rollout_payload.rs). [ccusage](https://github.com/ccusage/ccusage) is a useful independent reference for the same local-log approach, source discovery, and replay/deduplication edge cases. Token Current does not require ccusage or Node.js.
 
 ## Local storage
 
@@ -72,7 +72,7 @@ bash -n Scripts/package_app.sh Scripts/compile_and_run.sh Scripts/sign-and-notar
 
 The accounting library and its tests also build on Linux with Swift 6 and `libsqlite3-dev`. Linux builds intentionally exclude the SwiftUI/AppKit interface; they do not validate macOS APIs or rendering.
 
-The GitHub Actions workflow runs tests on macOS, builds a universal app, checks its bundle/signature/architectures, and uploads a development ZIP. It runs after this repository is placed on GitHub; it has not been executed from this Linux workspace.
+The [GitHub Actions workflow](https://github.com/MrMohebi/token-current/actions) runs tests on macOS, builds a universal app, checks its bundle/signature/architectures, smoke-tests native launch, and uploads a development ZIP. See [verification details](docs/VERIFICATION.md) for what has been exercised and what still needs interactive review.
 
 Before distributing, complete the [Mac acceptance checks](docs/MAC_VALIDATION.md). Xcode previews include explicitly illustrative light/dark readings; the running app never uses preview measurements.
 

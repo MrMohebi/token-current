@@ -20,7 +20,7 @@ enum DisplayDensity: String, CaseIterable, Codable, Identifiable {
 }
 
 struct AppPreferences: Codable {
-    var sources = SourceConfiguration()
+    var sources = SourceConfiguration.autodetected()
     var filter = SourceFilter.all
     var density = DisplayDensity.standard
 
