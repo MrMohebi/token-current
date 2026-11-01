@@ -20,7 +20,8 @@ public struct NetworkSnapshot: Codable, Sendable {
     public var providers: [String: NetworkProvider]
 
     public init(id: String, name: String, bootID: String, sequence: UInt64, local: MonitorSnapshot) {
-        self.id = id; self.name = String(name.prefix(80)); platform = "darwin"
+        self.id = id; self.name = name.isEmpty ? "This Mac" : String(name.prefix(80)); platform = "darwin"
+        while self.name.utf8.count > 80 { self.name.removeLast() }
         self.bootID = bootID; self.sequence = sequence
         observedAt = local.timestamp.timeIntervalSince1970
         day = Self.utcDay(local.timestamp)

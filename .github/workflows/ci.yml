@@ -44,7 +44,18 @@ jobs:
           cp .build/TokenCurrent.iconset/icon_512x512@2x.png build/TokenCurrent-brand-kit/TokenCurrent-icon-1024.png
           cp build/TokenCurrent.app/Contents/Resources/Icon.icns build/TokenCurrent-brand-kit/TokenCurrent.icns
           ditto -c -k --keepParent build/TokenCurrent-brand-kit build/TokenCurrent-brand-kit.zip
+      - name: Package and verify drag-to-Applications DMG
+        run: |
+          Scripts/create_dmg.sh build/TokenCurrent.app build/TokenCurrent-macos-universal.dmg
+          mkdir -p build/dmg-check
+          hdiutil attach -quiet -readonly -noverify -noautoopen -mountpoint "$PWD/build/dmg-check" build/TokenCurrent-macos-universal.dmg
+          trap 'hdiutil detach "$PWD/build/dmg-check" -quiet' EXIT
+          test "$(readlink build/dmg-check/Applications)" = /Applications
+          codesign --verify --deep --strict build/dmg-check/TokenCurrent.app
+          cmp build/TokenCurrent.app/Contents/MacOS/TokenCurrent build/dmg-check/TokenCurrent.app/Contents/MacOS/TokenCurrent
       - uses: actions/upload-artifact@v4
         with:
           name: TokenCurrent-macos-release
-          path: build/*.zip
+          path: |
+            build/*.zip
+            build/*.dmg

@@ -23,7 +23,11 @@ private final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
 }
 
 public struct MeshAPI: Sendable {
-    private static let session = URLSession(configuration: .ephemeral, delegate: NoRedirects(), delegateQueue: nil)
+    private static let session: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForResource = 5
+        return URLSession(configuration: configuration, delegate: NoRedirects(), delegateQueue: nil)
+    }()
     public let origin: URL
     public let token: String
     public init(origin: String, token: String) throws {
@@ -62,10 +66,22 @@ public struct MeshAPI: Sendable {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
+        #if os(macOS)
+        let (bytes, response) = try await Self.session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse else { throw MeshAPIError.invalid }
+        guard (200..<300).contains(http.statusCode) else { throw MeshAPIError.rejected(http.statusCode) }
+        var data = Data()
+        for try await byte in bytes {
+            guard data.count < 1_048_576 else { throw MeshAPIError.oversized }
+            data.append(byte)
+        }
+        return data
+        #else
         let (data, response) = try await Self.session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw MeshAPIError.invalid }
         guard (200..<300).contains(http.statusCode) else { throw MeshAPIError.rejected(http.statusCode) }
         guard data.count <= 1_048_576 else { throw MeshAPIError.oversized }
         return data
+        #endif
     }
 }
