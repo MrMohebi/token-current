@@ -27,6 +27,15 @@ final class MeshTests: XCTestCase {
         a = machine("machine-a"); a.snapshot?.observedAt += 600
         XCTAssertNil(MeshAccounting.combine([a], at: now).rate(for: nil))
     }
+    func testImportingAndPausedRemoteSourcesAreNotReportedAsIdle() {
+        var a = machine("machine-a")
+        a.snapshot?.providers["claude"]?.health = "importing"
+        XCTAssertTrue(MeshAccounting.combine([a], at: now).importing)
+        XCTAssertNil(MeshAccounting.combine([a], at: now).rate(for: nil))
+        a.snapshot?.providers["claude"]?.health = "paused"
+        XCTAssertNil(MeshAccounting.combine([a], at: now).rate(for: nil))
+        XCTAssertFalse(MeshAccounting.combine([a], at: now).importing)
+    }
     func testEndpointTransportRestrictions() {
         for endpoint in ["https://meter.example.com", "http://127.0.0.1:8787", "http://100.100.1.2:8790", "http://[fd7a:115c:a1e0::1]:8790"] {
             XCTAssertNotNil(MeshAPI.endpoint(endpoint), endpoint)

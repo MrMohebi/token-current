@@ -45,7 +45,7 @@ struct SettingsView: View {
                         .disabled(model.isApplyingSources)
                 }
                 ForEach(Provider.allCases) { provider in
-                    LabeledContent(provider.name, value: model.snapshot.health[provider]?.label ?? "Checking…")
+                    LabeledContent(provider.name, value: model.localSnapshot.health[provider]?.label ?? "Checking…")
                         .font(.caption)
                 }
             } header: { Text("Local sources") }

@@ -95,11 +95,13 @@ public enum MeshAccounting {
     public static func combine(_ machines: [NetworkMachine], selectedID: String = "all", at now: Date) -> MonitorSnapshot {
         var result = MonitorSnapshot(timestamp: now, importing: false)
         var seen: Set<String> = []
+        var importing = false
         for machine in machines.prefix(128) where selectedID == "all" || machine.id == selectedID {
             guard seen.insert(machine.id).inserted, let s = machine.snapshot,
                   s.id == machine.id, s.isValid(at: now), s.day == NetworkSnapshot.utcDay(now) else { continue }
             for p in Provider.allCases {
                 guard let value = s.providers[p.rawValue] else { continue }
+                if machine.isOnline(at: now) && value.health == "importing" { importing = true }
                 result.totals[p] = (result.totals[p] ?? .zero) + value.totals
                 if machine.isOnline(at: now) && value.health == "ready" {
                     result.health[p] = .ready
@@ -109,6 +111,7 @@ public enum MeshAccounting {
                 }
             }
         }
+        result.importing = importing && !result.health.values.contains(.ready)
         return result
     }
 }

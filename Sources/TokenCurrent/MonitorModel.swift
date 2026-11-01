@@ -13,6 +13,7 @@ final class MonitorModel {
     private var monitoringError: String?
 
     let mesh = MeshController()
+    var localSnapshot = MonitorSnapshot()
     var snapshot = MonitorSnapshot()
     var errorMessage: String?
     var filter: SourceFilter { didSet { preferences.filter = filter; preferences.save() } }
@@ -58,6 +59,10 @@ final class MonitorModel {
         if isPaused { return mesh.isEnabled ? "Local paused" : "Paused" }
         if snapshot.importing { return "Reading history" }
         if let rate { return rate > 0 ? "Reporting" : "Idle" }
+        if mesh.isEnabled {
+            let selected = mesh.machines.filter { mesh.selectedID == "all" || $0.id == mesh.selectedID }
+            if !selected.isEmpty && !selected.contains(where: { $0.isOnline(at: .now) }) { return "Offline" }
+        }
         if selectedProviders.contains(where: { snapshot.health[$0] == .unsupported }) { return "Update needed" }
         return "Waiting for usage"
     }
@@ -84,7 +89,9 @@ final class MonitorModel {
     func togglePause() async {
         isPaused.toggle()
         await engine?.setPaused(isPaused)
-        snapshot.paused = isPaused
+        localSnapshot.paused = isPaused
+        if mesh.isEnabled { snapshot = mesh.update(local: localSnapshot, available: monitoringError == nil) }
+        else { snapshot.paused = isPaused }
     }
 
     func clearHistory() async {
@@ -94,6 +101,7 @@ final class MonitorModel {
                 var calendar = Calendar.current
                 if mesh.isEnabled { calendar.timeZone = TimeZone(secondsFromGMT: 0)! }
                 let local = try await engine.tick(calendar: calendar)
+                localSnapshot = local
                 snapshot = mesh.isEnabled ? mesh.update(local: local, available: true) : local
             }
             errorMessage = nil
@@ -138,6 +146,7 @@ final class MonitorModel {
                     var calendar = Calendar.current
                     if useUTC { calendar.timeZone = TimeZone(secondsFromGMT: 0)! }
                     let local = try await engine.tick(calendar: calendar)
+                    localSnapshot = local
                     snapshot = useUTC ? mesh.update(local: local, available: true) : local
                     monitoringError = nil
                     let paths = await engine.watchedDirectories()

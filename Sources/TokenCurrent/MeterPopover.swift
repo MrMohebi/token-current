@@ -31,7 +31,7 @@ struct MeterPopover: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .textSelection(.enabled)
                     } else if !model.hasMeasurement && !model.snapshot.importing {
-                        Text("Start a Claude Code or Codex session. Usage appears when the tool writes its next update. Check source folders in Settings if nothing appears.")
+                        Text(model.mesh.isEnabled ? "No fresh usage for this selection. Check that its agents are running and paired in Network settings. Offline machines keep their last reported totals for today." : "Start a Claude Code or Codex session. Usage appears when the tool writes its next update. Check source folders in Settings if nothing appears.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
