@@ -40,8 +40,9 @@ public struct MeshAPI: Sendable {
               c.query == nil, c.fragment == nil, c.path.isEmpty || c.path == "/" else { return nil }
         let parts = host.split(separator: ".", omittingEmptySubsequences: false)
         let v4 = parts.count == 4 ? parts.compactMap { UInt8($0) } : []
-        let tailnet = v4.count == 4 && v4[0] == 100 && (64...127).contains(v4[1])
-        let loopback = host == "localhost" || host == "[::1]" || host == "::1" || (v4.count == 4 && v4[0] == 127)
+        let canonicalV4 = v4.count == 4 && host == v4.map { String($0) }.joined(separator: ".")
+        let tailnet = canonicalV4 && v4[0] == 100 && (64...127).contains(v4[1])
+        let loopback = host == "localhost" || host == "[::1]" || host == "::1" || (canonicalV4 && v4[0] == 127)
         let v6 = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]")).hasPrefix("fd7a:115c:a1e0:")
         guard c.scheme == "https" || (c.scheme == "http" && (loopback || tailnet || v6)) else { return nil }
         return c.url

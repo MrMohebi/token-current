@@ -40,7 +40,7 @@ final class MeshTests: XCTestCase {
         for endpoint in ["https://meter.example.com", "http://127.0.0.1:8787", "http://100.100.1.2:8790", "http://[fd7a:115c:a1e0::1]:8790"] {
             XCTAssertNotNil(MeshAPI.endpoint(endpoint), endpoint)
         }
-        for endpoint in ["http://example.com", "http://127.0.0.1.example.com", "http://100.64.0.1.example.com", "http://192.168.1.2", "https://user:key@example.com", "https://example.com/path", "https://example.com?token=secret", "file:///tmp/test"] {
+        for endpoint in ["http://example.com", "http://0100.64.0.1", "http://+127.0.0.1", "http://127.0.0.1.example.com", "http://100.64.0.1.example.com", "http://192.168.1.2", "https://user:key@example.com", "https://example.com/path", "https://example.com?token=secret", "file:///tmp/test"] {
             XCTAssertNil(MeshAPI.endpoint(endpoint), endpoint)
         }
     }
