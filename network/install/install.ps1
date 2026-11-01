@@ -13,7 +13,7 @@ if (!(Test-Path $ConfigPath)) { & $Binary init; if ($LASTEXITCODE -ne 0) { throw
 $Identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 & icacls $ConfigDir /inheritance:r /grant:r "${Identity}:(OI)(CI)F" 'SYSTEM:(OI)(CI)F' | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Could not protect agent configuration' }
-$Action = New-ScheduledTaskAction -Execute $Binary -Argument 'run' -WorkingDirectory $InstallDir
+$Action = New-ScheduledTaskAction -Execute $Binary -Argument 'run --background' -WorkingDirectory $InstallDir
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $Identity
 $Principal = New-ScheduledTaskPrincipal -UserId $Identity -LogonType Interactive -RunLevel Limited
 $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries

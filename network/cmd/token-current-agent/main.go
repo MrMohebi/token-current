@@ -57,6 +57,7 @@ func run() error {
 	}
 	flags := flag.NewFlagSet("token-current-agent "+command, flag.ContinueOnError)
 	path := flags.String("config", filepath.Join(base, "Token Current", "agent.json"), "configuration file")
+	background := flags.Bool("background", false, "hide the Windows console for a background task")
 	name := flags.String("name", "", "machine display name")
 	listen := flags.String("listen", "127.0.0.1:8790", "HTTP address; use Tailscale Serve to expose it privately")
 	claude := flags.String("claude-home", "", "Claude data home")
@@ -197,6 +198,9 @@ func run() error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(status.Peer)
 	case "run":
+		if *background {
+			hideConsole()
+		}
 		return serve(cfg, *path)
 	default:
 		return errors.New("use init, run, token, configure, tailscale, or peers")

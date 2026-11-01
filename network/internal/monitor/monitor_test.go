@@ -104,3 +104,60 @@ func TestCodexCumulativeCacheAndFork(t *testing.T) {
 		t.Fatal(o, bad)
 	}
 }
+
+func TestCodexArchiveAgentsAndCumulativeDayBaseline(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(root, "codex")
+	sessions := filepath.Join(home, "sessions")
+	archive := filepath.Join(home, "archived_sessions")
+	os.MkdirAll(sessions, 0700)
+	os.MkdirAll(archive, 0700)
+	now := time.Now().UTC()
+	today := now.Format(time.RFC3339Nano)
+	yesterday := now.Add(-24 * time.Hour).Format(time.RFC3339Nano)
+	meta := fmt.Sprintf(`{"type":"session_meta","timestamp":%q,"payload":{"id":"parent"}}`, yesterday) + "\n"
+	counter := func(stamp string, input, output, cached int) string {
+		return fmt.Sprintf(`{"type":"event_msg","timestamp":%q,"payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":%d,"output_tokens":%d,"cached_input_tokens":%d,"reasoning_output_tokens":30}}}}`, stamp, input, output, cached) + "\n"
+	}
+	initial := meta + counter(yesterday, 1000, 100, 500) + counter(today, 1200, 130, 600)
+	path := filepath.Join(sessions, "parent.jsonl")
+	appendFile(t, path, initial)
+	appendFile(t, filepath.Join(archive, "copy.jsonl"), initial)
+	m, e := New(filepath.Join(root, "state.json"), filepath.Join(root, "claude"), home)
+	if e != nil {
+		t.Fatal(e)
+	}
+	p, e := m.Tick(now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if c := p["codex"].Totals; c.Input != 200 || c.Output != 30 || c.CacheRead != 100 {
+		t.Fatal(c)
+	}
+	appendFile(t, path, counter(today, 1500, 150, 700))
+	child := fmt.Sprintf(`{"type":"session_meta","timestamp":%q,"payload":{"id":"agent","parent_thread_id":"parent"}}`, today) + "\n" + counter(today, 500, 50, 100)
+	appendFile(t, filepath.Join(sessions, "child.jsonl"), child)
+	p, e = m.Tick(now.Add(5 * time.Second))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if c := p["codex"].Totals; c.Input != 1000 || c.Output != 100 || c.CacheRead != 300 || c.Total() != 1100 {
+		t.Fatal(c)
+	}
+	if p["codex"].Rate != 87 {
+		t.Fatal("new agent or cache counted incorrectly", p["codex"])
+	}
+	next := now.Add(24 * time.Hour)
+	appendFile(t, path, counter(next.Format(time.RFC3339Nano), 1600, 160, 750))
+	os.Chtimes(path, next, next)
+	p, e = m.Tick(next)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if c := p["codex"].Totals; c.Input != 100 || c.Output != 10 || c.CacheRead != 50 {
+		t.Fatal("cumulative baseline lost at midnight", c)
+	}
+	if p["codex"].Rate != 0 {
+		t.Fatal("catch-up leaked into rate")
+	}
+}
