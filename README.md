@@ -17,6 +17,16 @@ Think of an internet speed meter, but for AI token consumption. Glance at the ra
 
 **[Download for Mac (.dmg)](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.dmg)** · [Install](#install) · [Read the meter](#read-the-meter) · [Troubleshooting](#troubleshooting)
 
+## Connect a fleet
+
+**New in 1.1:** combine your Mac, Linux servers, and Windows PCs in one menu bar meter. See each machine on a connection map and switch between individual or combined usage.
+
+- **Direct / Tailscale:** pair machines privately, with no Token Current relay server.
+- **Self-hosted relay:** Docker Compose server, combined browser dashboard, and machine management from the Mac app.
+- **Background agents:** standalone Linux and Windows binaries; no changes to your AI tools.
+
+**[Set up your machines →](docs/NETWORK.md)** · [Linux installer](Scripts/install_agent.sh) · [Windows downloads](https://github.com/MrMohebi/token-current/releases/latest)
+
 ## Install
 
 You need **macOS 14 Sonoma or later**, on an Apple silicon or Intel Mac. One universal download works for both.
@@ -47,7 +57,7 @@ The installer downloads the latest release, verifies its checksum and app signat
 2. Click Token Current's menu bar arrows. Existing logs load automatically, including today's earlier usage.
 3. Send a prompt. The meter changes when the coding tool writes a usage update.
 
-If nothing appears, open **Settings → Local sources** and check the status beside each tool. Token Current monitors locally available CLI/session logs; it does not read browser conversations or sessions on another machine.
+If nothing appears, open **Settings → Local → Local sources** and check the status beside each tool. Token Current monitors locally available CLI/session logs; it does not read browser conversations. To include other machines, [pair their agents](docs/NETWORK.md).
 
 ## What you get
 
@@ -57,7 +67,10 @@ If nothing appears, open **Settings → Local sources** and check the status bes
 | 60-second graph | Bursts, pauses, and recent activity |
 | All / Claude / Codex | One combined view or a single tool |
 | Today's totals | Input, output, and cached tokens |
-| Local monitoring | Usage metadata stays on your Mac |
+| Local monitoring | No accounts needed; optional private network sharing |
+| Machine map | Individual or combined Mac, Linux, and Windows usage |
+| Direct Tailscale pairing | Private connections without a Token Current relay |
+| Self-hosted dashboard | Manage your network from a browser or Mac |
 | Display options | Full rate, compact rate, or icon only |
 | Launch at login | Keep the meter available when you start your Mac |
 
@@ -78,7 +91,7 @@ An example menu bar reading is **`↕ 2.4k tok/s`**. Here, `k` means thousand, s
 
 **The display refreshes every second, but source logs may update in batches.** This measures reported consumption, not exact model generation speed. A large prompt or cached-context update can create a burst. Zero while a tool is working can simply mean it has not written its next usage record yet.
 
-Historical imports, restart, resume, and sleep/wake catch-up do not create false live spikes. Today follows your Mac's local calendar and time zone. The meter does not show dollars, subscription quota percentages, or remaining plan allowance.
+Historical imports, restart, resume, and sleep/wake catch-up do not create false live spikes. Today follows your Mac's local calendar in local-only mode; network mode uses UTC for consistent totals across machines. The meter does not show dollars, subscription quota percentages, or remaining plan allowance.
 
 ## Make it yours
 
@@ -126,7 +139,7 @@ Compressed `.jsonl.zst` archives are not supported in v1. Older fork logs can un
 
 **Uninstall:** turn off Launch at login, quit from the More menu, then move TokenCurrent.app to the Trash. Optional local usage data is in `~/Library/Application Support/Token Current`; preferences use bundle ID `app.tokencurrent.mac`.
 
-The app retains only usage metadata, deduplication counters, and file checkpoints. It does not store prompts, responses, or credentials, and it does not send telemetry. Clear history preserves checkpoints so old logs are not immediately counted again.
+The app retains only usage metadata, deduplication counters, and file checkpoints. It does not store prompts, responses, or AI account credentials, and it does not send telemetry. Optional network pairing tokens are saved in your Mac Keychain. In network mode, usage metadata is shared with your paired machines or self-hosted relay. Clear history preserves checkpoints so old logs are not immediately counted again.
 
 ## Icons and logos
 

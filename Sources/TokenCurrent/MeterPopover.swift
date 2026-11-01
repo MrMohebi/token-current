@@ -20,6 +20,7 @@ struct MeterPopover: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                    if model.mesh.isEnabled { MeshMap(mesh: model.mesh) }
                     providerRows
                     Divider()
                     today
@@ -100,7 +101,7 @@ struct MeterPopover: View {
     private var today: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Text("Today").font(.headline)
+                Text(model.mesh.isEnabled ? "Today · UTC" : "Today").font(.headline)
                 Spacer()
                 Text(model.filter.title).font(.caption).foregroundStyle(.secondary)
             }
@@ -111,7 +112,7 @@ struct MeterPopover: View {
                 Spacer(minLength: 0)
                 counter("Cached*", value: model.totals.cached)
             }
-            Text("*Included in input. Counts come from local logs.")
+            Text("*Included in input. Counts come from usage logs.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -132,7 +133,7 @@ struct MeterPopover: View {
 
     private var footer: some View {
         HStack {
-            Button(model.isPaused ? "Resume" : "Pause", systemImage: model.isPaused ? "play" : "pause") {
+            Button(model.isPaused ? "Resume local" : "Pause local", systemImage: model.isPaused ? "play" : "pause") {
                 Task { await model.togglePause() }
             }
             .keyboardShortcut("p", modifiers: [.command, .shift])

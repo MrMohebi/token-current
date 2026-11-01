@@ -1,0 +1,19 @@
+# Overlay: docker compose -f compose.yaml -f compose.https.yaml up -d --build
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      TOKEN_CURRENT_DOMAIN: ${TOKEN_CURRENT_DOMAIN:?Set TOKEN_CURRENT_DOMAIN to your relay hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [relay]
+volumes:
+  caddy-data:
+  caddy-config:

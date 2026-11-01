@@ -8,6 +8,13 @@ struct SettingsView: View {
     @State private var confirmsClear = false
 
     var body: some View {
+        TabView {
+            general.tabItem { Label("Local", systemImage: "laptopcomputer") }
+            MeshSettingsView(mesh: model.mesh).tabItem { Label("Network", systemImage: "network") }
+        }.frame(width: 600, height: 730)
+    }
+
+    private var general: some View {
         Form {
             Section {
                 Picker("Menu bar display", selection: $model.density) {
@@ -46,7 +53,7 @@ struct SettingsView: View {
             Section {
                 Text("The meter refreshes each second and averages reported usage over 10 seconds. Logs can arrive in batches. Cached tokens are included in input; reasoning tokens are included in output when reported by the source.")
                     .font(.callout)
-                Text("Token Current reads usage metadata locally. It does not retain prompts, responses, credentials, or send telemetry.")
+                Text("Token Current reads usage metadata locally. It does not retain prompts, responses, AI account credentials, or send telemetry. Optional network mode shares usage with your paired machines or relay.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Button("Clear local usage history…", role: .destructive) { confirmsClear = true }
@@ -60,12 +67,11 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Token Current", value: "1.0.0")
+                LabeledContent("Token Current", value: "1.1.0")
                 Button("Quit Token Current") { NSApp.terminate(nil) }
             }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 670)
         .onAppear { model.refreshLoginStatus() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refreshLoginStatus()

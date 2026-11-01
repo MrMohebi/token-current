@@ -1,0 +1,60 @@
+name: Verify network agents
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: network
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - run: go test -race ./...
+      - run: go vet ./...
+      - name: Agent initialization and private API smoke test
+        shell: bash
+        run: |
+          go build -o agent ./cmd/token-current-agent
+          ./agent init --config "$RUNNER_TEMP/agent/config.json" --listen 127.0.0.1:18790
+          ./agent run --config "$RUNNER_TEMP/agent/config.json" &
+          PID=$!
+          trap 'kill "$PID" || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18790/healthz; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18790/healthz
+          test "$(curl --silent -o /dev/null -w '%{http_code}' http://127.0.0.1:18790/api/v1/snapshot)" = 401
+      - name: Validate Windows installer syntax
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) 'install/install.ps1'), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors.Count) { throw ($errors | Out-String) }
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - run: Scripts/package_network.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TokenCurrent-network-release
+          path: build/network/*

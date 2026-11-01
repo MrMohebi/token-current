@@ -12,6 +12,7 @@ final class MonitorModel {
     private var watchedPaths: [URL] = []
     private var monitoringError: String?
 
+    let mesh = MeshController()
     var snapshot = MonitorSnapshot()
     var errorMessage: String?
     var filter: SourceFilter { didSet { preferences.filter = filter; preferences.save() } }
@@ -37,14 +38,14 @@ final class MonitorModel {
         if startMonitoring { monitorTask = Task { [weak self] in await self?.run() } }
     }
 
-    var rate: Double? { monitoringError == nil ? snapshot.rate(for: filter.provider) : nil }
+    var rate: Double? { monitoringError == nil || mesh.isEnabled ? snapshot.rate(for: filter.provider) : nil }
     var totals: TokenCounts { snapshot.total(for: filter.provider) }
     var selectedProviders: [Provider] { filter.provider.map { [$0] } ?? Provider.allCases }
     var hasMeasurement: Bool { selectedProviders.contains { snapshot.health[$0]?.isMeasurable == true } }
-    var displayedError: String? { errorMessage ?? monitoringError }
+    var displayedError: String? { errorMessage ?? monitoringError ?? (mesh.isEnabled ? mesh.error : nil) }
     var status: String {
         if displayedError != nil { return "Needs attention" }
-        if isPaused { return "Paused" }
+        if isPaused { return mesh.isEnabled ? "Local paused" : "Paused" }
         if snapshot.importing { return "Reading history" }
         if let rate { return rate > 0 ? "Reporting" : "Idle" }
         if selectedProviders.contains(where: { snapshot.health[$0] == .unsupported }) { return "Update needed" }
@@ -79,7 +80,12 @@ final class MonitorModel {
     func clearHistory() async {
         do {
             try await engine?.clearHistory()
-            if let engine { snapshot = try await engine.tick() }
+            if let engine {
+                var calendar = Calendar.current
+                if mesh.isEnabled { calendar.timeZone = TimeZone(secondsFromGMT: 0)! }
+                let local = try await engine.tick(calendar: calendar)
+                snapshot = mesh.isEnabled ? mesh.update(local: local, available: true) : local
+            }
             errorMessage = nil
         } catch { errorMessage = "Could not clear local history: \(error.localizedDescription)" }
     }
@@ -103,7 +109,8 @@ final class MonitorModel {
     private func run() async {
         do {
             let directory = URL.applicationSupportDirectory.appending(path: "Token Current", directoryHint: .isDirectory)
-            let engine = try MonitoringEngine(databasePath: directory.appending(path: "usage.sqlite").path,
+            var useUTC = mesh.isEnabled
+            var engine = try MonitoringEngine(databasePath: directory.appending(path: useUTC ? "network-usage.sqlite" : "usage.sqlite").path,
                                               configuration: preferences.sources)
             self.engine = engine
             watcher = DirectoryWatcher { [weak self] in
@@ -111,7 +118,17 @@ final class MonitorModel {
             }
             while !Task.isCancelled {
                 do {
-                    snapshot = try await engine.tick()
+                    if useUTC != mesh.isEnabled {
+                        useUTC = mesh.isEnabled
+                        engine = try MonitoringEngine(databasePath: directory.appending(path: useUTC ? "network-usage.sqlite" : "usage.sqlite").path,
+                                                      configuration: preferences.sources)
+                        self.engine = engine
+                        await engine.setPaused(isPaused)
+                    }
+                    var calendar = Calendar.current
+                    if useUTC { calendar.timeZone = TimeZone(secondsFromGMT: 0)! }
+                    let local = try await engine.tick(calendar: calendar)
+                    snapshot = useUTC ? mesh.update(local: local, available: true) : local
                     monitoringError = nil
                     let paths = await engine.watchedDirectories()
                     if paths != watchedPaths { watcher?.watch(paths); watchedPaths = paths }
