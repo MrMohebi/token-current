@@ -14,7 +14,7 @@ Implementation workspace: Linux x86_64, November 1, 2026. Tested with the offici
 
 ## macOS CI verification
 
-The [initial macOS workflow](https://github.com/MrMohebi/token-current/actions/runs/41307786824) compiled the native SwiftUI application, passed all 25 tests present in that revision, built both arm64 and x86_64 binaries, and passed Info.plist and code signature verification. Its final architecture assertion failed because the `lipo` command placed the input path after a variadic option; that command has been corrected. The workflow now also performs a native launch smoke test. Release assets are published only after the complete updated workflow succeeds.
+The [complete macOS workflow](https://github.com/MrMohebi/token-current/actions/runs/41307988103) passed all 28 tests with no skips or failures, compiled the native SwiftUI application for arm64 and x86_64, verified the universal bundle's Info.plist and code signature, and launched the native app and confirmed it remained running. It produced the application ZIP used for release preparation. Release assets are published only after the workflow succeeds on the tagged revision. Tag pushes do not repeat a branch build.
 
 ## Pending interactive validation
 

@@ -1,6 +1,6 @@
 # Mac acceptance checks
 
-These checks require a Mac. They have not been run in the Linux implementation workspace. Linux test results are not evidence that SwiftUI views render correctly or that a signed `.app` launches.
+These checks require a Mac. The macOS GitHub Actions workflow has passed automated compilation, tests, universal bundle/signature checks, and a native launch smoke test; see `VERIFICATION.md`. Interactive rendering, accessibility, login-item, and performance checks below remain pending. Linux test results alone do not establish native behavior.
 
 ## Build and launch
 
