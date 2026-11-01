@@ -25,6 +25,13 @@ Think of an internet speed meter, but for AI token consumption. Glance at the ra
 - **Self-hosted relay:** Docker Compose server, combined browser dashboard, and machine management from the Mac app.
 - **Background agents:** standalone Linux and Windows binaries; no changes to your AI tools.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/network-dashboard-dark.png">
+  <img src="assets/screenshots/network-dashboard.png" alt="Token Current dashboard with a machine map, combined rate, and individual Linux, Mac, and Windows readings" width="100%">
+</picture>
+
+*Running browser dashboard with illustrative usage from three test machines.*
+
 **[Set up your machines →](docs/NETWORK.md)** · [Linux installer](Scripts/install_agent.sh) · [Windows downloads](https://github.com/MrMohebi/token-current/releases/latest)
 
 ## Install
@@ -207,7 +214,7 @@ python3 -m unittest discover -s Tests/Installer -v
 bash -n Scripts/*.sh
 ```
 
-The [macOS workflow](https://github.com/MrMohebi/token-current/actions) builds and checks the universal app, runs tests, verifies its signature, smoke-tests native launch, and prepares download archives. The 28 Swift scenarios passed on macOS. The six installer scenarios cover installation, updates, unsupported systems, invalid identity/signature/checksum, and failed copying.
+The [macOS workflow](https://github.com/MrMohebi/token-current/actions) builds and checks the universal app, runs tests, verifies its signature, smoke-tests native launch, and prepares download archives. The 32 Swift scenarios passed on macOS. Network tests and daemon startup checks also run on Linux, Windows, and macOS, with a real Windows scheduled-task install and Docker relay check. The six installer scenarios cover installation, updates, unsupported systems, invalid identity/signature/checksum, and failed copying.
 
 The core also tests on Linux with Swift 6 and `libsqlite3-dev`; this does not validate the native interface. Interactive visual, keyboard/VoiceOver, login-item, and Instruments review remain pending. See [verification evidence](docs/VERIFICATION.md) and the [Mac validation checklist](docs/MAC_VALIDATION.md).
 

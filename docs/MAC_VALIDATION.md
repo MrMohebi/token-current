@@ -33,3 +33,14 @@ These checks require a Mac. The macOS GitHub Actions workflow has passed automat
 - Enable launch at login from the installed bundle, approve Login Items if requested, log out/in, and verify launch. Disable it and repeat. Check the toggle after changing Login Items externally.
 - Build universal output, inspect it with `lipo -archs`, and verify signing with `codesign --verify --deep --strict`.
 - For distribution, run the notarization script with real signing credentials, validate the stapled ticket, then test a downloaded ZIP under Gatekeeper on a clean Mac. Development ad-hoc signing is not notarization.
+
+## Network acceptance
+
+- Pair actual Linux and Windows machines through Tailscale Serve, with no Token Current relay. Discover peers, restart Tailscale, revoke a tailnet permission, and confirm recovery after restoring it.
+- Test direct pairing tokens in Keychain across a Mac app update and reboot. Verify requests to an invalid/self-signed HTTPS endpoint fail without bypassing certificate verification.
+- Connect a relay; enroll this Mac, add another machine, rotate its publishing token, and remove it. Confirm the native and browser views agree, including offline totals.
+- Select each machine and provider; verify the headline, graph, and totals all follow selection. Confirm duplicate direct endpoints do not count a machine twice.
+- Pause this Mac while a remote machine is active: the combined meter should continue, and the status should say Local paused.
+- Confirm network mode labels Today UTC and local mode uses the Mac day. Check around midnight in both zones.
+
+Live tailnet connectivity, native Keychain interaction, and interactive Mac network controls need an authenticated tailnet and a Mac. Automated server, CLI fixture, and browser tests do not replace those checks.

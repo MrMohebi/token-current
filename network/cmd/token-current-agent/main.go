@@ -156,10 +156,31 @@ func run() error {
 		if e != nil {
 			return errors.New("could not inspect existing Tailscale Serve configuration")
 		}
-		if bytes.Contains(current, []byte(":8790")) && !bytes.Contains(current, []byte("http://127.0.0.1:8790")) {
+		var serveConfig struct {
+			TCP map[string]struct {
+				HTTPS      bool
+				TCPForward string
+			}
+			Web map[string]struct {
+				Handlers map[string]struct{ Proxy string }
+			}
+		}
+		if json.Unmarshal(current, &serveConfig) != nil {
+			return errors.New("unsupported Tailscale Serve configuration; existing configuration was preserved")
+		}
+		if tcp, ok := serveConfig.TCP["8790"]; ok && (!tcp.HTTPS || tcp.TCPForward != "") {
 			return errors.New("Tailscale Serve port 8790 is already in use; existing configuration was preserved")
 		}
-		if e = exec.CommandContext(ctx, tailnet.Binary(), "serve", "--bg", "--https=8790", "http://127.0.0.1:8790").Run(); e != nil {
+		for host, site := range serveConfig.Web {
+			if strings.HasSuffix(host, ":8790") && (len(site.Handlers) != 1 || site.Handlers["/"].Proxy != "http://127.0.0.1:8790") {
+				return errors.New("Tailscale Serve port 8790 is already in use; existing configuration was preserved")
+			}
+		}
+		command := exec.CommandContext(ctx, tailnet.Binary(), "serve", "--bg", "--https=8790", "http://127.0.0.1:8790")
+		command.Stdout = os.Stdout
+		command.Stderr = os.Stderr
+		command.Stdin = os.Stdin
+		if e = command.Run(); e != nil {
 			return errors.New("Tailscale Serve could not be enabled; check your tailnet HTTPS/Serve permissions")
 		}
 		if status.Self != nil {

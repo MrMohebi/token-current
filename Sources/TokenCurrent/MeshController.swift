@@ -39,7 +39,7 @@ final class MeshController {
     }
     private func changed() {
         generation += 1; remote = []; machines = []; graph = []; selectedID = "all"
-        settings.save(); error = nil
+        settings.save(); error = nil; issuedToken = nil
     }
     func connectRelay(token: String) {
         do {
@@ -93,6 +93,7 @@ final class MeshController {
         do {
             try await relayAPI().remove(id: id)
             remote.removeAll { $0.id == id }
+            if selectedID == id { selectedID = "all" }
             if settings.relayLocalID == id { settings.relayLocalID = nil; PairingKeychain.remove("publisher"); settings.save() }
             error = nil
         } catch { self.error = error.localizedDescription }
