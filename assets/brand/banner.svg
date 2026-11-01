@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+<title id="title">Token Current — your AI usage, at a glance.</title>
+<desc id="desc">Token Current branding with its cyan and amber arrow icon, native macOS menu bar utility for Claude Code and Codex.</desc>
+<rect width="1200" height="300" rx="24" fill="#11191d"/>
+<g transform="translate(35 42) scale(.21)"><rect x="72" y="72" width="880" height="880" rx="194" fill="#171f24"/>
+<g fill="none" stroke-width="64" stroke-linecap="round" stroke-linejoin="round">
+<path d="M363 714V310M261 412L363 310L465 412" stroke="#59d9e8"/>
+<path d="M661 310V714M559 612L661 714L763 612" stroke="#fabe5c"/>
+</g></g>
+<g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+<text x="282" y="143" fill="#f4f7f8" font-size="66" font-weight="600" letter-spacing="-2">Token Current</text>
+<text x="285" y="190" fill="#bccacf" font-size="25">Your AI usage. At a glance.</text>
+<text x="285" y="237" fill="#bccacf" font-size="16">CLAUDE CODE + CODEX · NATIVE MACOS</text>
+</g>
+<g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M910 154H937L949 124L964 172L983 89L1003 169L1025 132L1041 154H1085" stroke="#59d9e8"/>
+<path d="M910 204H944L963 185L980 219L1001 159L1018 209L1044 190L1064 204H1085" stroke="#fabe5c" stroke-dasharray="5 6"/>
+</g></svg>

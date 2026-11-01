@@ -11,6 +11,8 @@ Implementation workspace: Linux x86_64, November 1, 2026. Tested with the offici
 - `bash -n` on packaging, launch, and notarization scripts: passed.
 - Invoked packaging on Linux: correctly refused with its macOS requirement, rather than generating a misleading `.app` from a Linux executable.
 - Confirmed that an idle monitoring tick leaves the SQLite WAL unchanged, and that a multi-chunk wake backlog never enters live throughput.
+- `python3 -m unittest discover -s Tests/Installer -v`: six installer tests passed, covering new installation, app-only updates, bad checksums/signatures/identity, staging-copy failures, and unsupported platforms. These use simulated macOS commands and do not claim a real end-user installation was performed.
+- Brand SVG files were parsed as XML. The macOS packaging workflow draws the matching native icon and exports its PNG and ICNS into a downloadable brand kit.
 
 ## macOS CI verification
 

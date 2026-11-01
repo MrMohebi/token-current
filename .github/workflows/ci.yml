@@ -16,7 +16,9 @@ jobs:
       - name: Test accounting and file monitoring
         run: swift test
       - name: Check scripts
-        run: bash -n Scripts/package_app.sh Scripts/compile_and_run.sh Scripts/sign-and-notarize.sh
+        run: bash -n Scripts/*.sh
+      - name: Test installation and update recovery
+        run: python3 -m unittest discover -s Tests/Installer -v
       - name: Build universal native application
         run: ARCHES="arm64 x86_64" SIGNING_MODE=adhoc Scripts/package_app.sh release
       - name: Verify bundle
@@ -34,9 +36,15 @@ jobs:
           sleep 3
           pgrep -x TokenCurrent
           pkill -x TokenCurrent
-      - name: Archive development build
-        run: ditto -c -k --keepParent build/TokenCurrent.app build/TokenCurrent-development.zip
+      - name: Archive app and brand kit
+        run: |
+          ditto -c -k --keepParent build/TokenCurrent.app build/TokenCurrent-macos-universal.zip
+          mkdir -p build/TokenCurrent-brand-kit
+          cp assets/brand/*.svg assets/brand/README.md build/TokenCurrent-brand-kit/
+          cp .build/TokenCurrent.iconset/icon_512x512@2x.png build/TokenCurrent-brand-kit/TokenCurrent-icon-1024.png
+          cp build/TokenCurrent.app/Contents/Resources/Icon.icns build/TokenCurrent-brand-kit/TokenCurrent.icns
+          ditto -c -k --keepParent build/TokenCurrent-brand-kit build/TokenCurrent-brand-kit.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: TokenCurrent-macos-development
-          path: build/TokenCurrent-development.zip
+          name: TokenCurrent-macos-release
+          path: build/*.zip

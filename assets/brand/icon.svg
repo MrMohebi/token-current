@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+<title id="title">Token Current app icon</title><desc id="desc">A cyan upward arrow and amber downward arrow on a dark rounded square.</desc>
+<rect x="72" y="72" width="880" height="880" rx="194" fill="#171f24"/>
+<g fill="none" stroke-width="64" stroke-linecap="round" stroke-linejoin="round">
+<path d="M363 714V310M261 412L363 310L465 412" stroke="#59d9e8"/>
+<path d="M661 310V714M559 612L661 714L763 612" stroke="#fabe5c"/>
+</g>
+</svg>
