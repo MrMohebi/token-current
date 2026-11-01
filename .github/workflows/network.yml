@@ -44,8 +44,54 @@ jobs:
           $errors = $null
           [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) 'install/install.ps1'), [ref]$null, [ref]$errors) | Out-Null
           if ($errors.Count) { throw ($errors | Out-String) }
+  end-to-end:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - run: python3 -m unittest discover -s Tests/Network -v
+      - name: Build and smoke test private Docker relay
+        run: |
+          docker compose -f network/deploy/compose.yaml up -d --build
+          trap 'docker compose -f network/deploy/compose.yaml down' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8787/healthz; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8787/healthz
+          test "$(docker compose -f network/deploy/compose.yaml exec -T relay id -u | tr -d '\r')" = 10001
+  windows-install:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Install and launch Windows scheduled task
+        shell: pwsh
+        run: |
+          Push-Location network
+          go build -o install/token-current-agent.exe ./cmd/token-current-agent
+          try {
+            & ./install/install.ps1
+            $ready = $false
+            for ($i=0; $i -lt 20; $i++) {
+              try { $r = Invoke-RestMethod http://127.0.0.1:8790/healthz; if ($r.ok) { $ready = $true; break } } catch {}
+              Start-Sleep -Seconds 1
+            }
+            if (!$ready) { throw 'Scheduled agent did not start' }
+            if ((Get-ScheduledTask -TaskName 'Token Current Agent').State -ne 'Running') { throw 'Task is not running' }
+          } finally {
+            Stop-ScheduledTask -TaskName 'Token Current Agent' -ErrorAction SilentlyContinue
+            Unregister-ScheduledTask -TaskName 'Token Current Agent' -Confirm:$false -ErrorAction SilentlyContinue
+            Pop-Location
+          }
   package:
-    needs: test
+    needs: [test, windows-install, end-to-end]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

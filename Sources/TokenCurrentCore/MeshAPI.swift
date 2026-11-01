@@ -34,7 +34,8 @@ public struct MeshAPI: Sendable {
         guard let c = URLComponents(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)),
               let host = c.host?.lowercased(), !host.isEmpty, c.user == nil, c.password == nil,
               c.query == nil, c.fragment == nil, c.path.isEmpty || c.path == "/" else { return nil }
-        let v4 = host.split(separator: ".").compactMap { UInt8($0) }
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        let v4 = parts.count == 4 ? parts.compactMap { UInt8($0) } : []
         let tailnet = v4.count == 4 && v4[0] == 100 && (64...127).contains(v4[1])
         let loopback = host == "localhost" || host == "[::1]" || host == "::1" || (v4.count == 4 && v4[0] == 127)
         let v6 = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]")).hasPrefix("fd7a:115c:a1e0:")

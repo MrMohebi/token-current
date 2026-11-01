@@ -149,10 +149,10 @@ func (m *Monitor) Tick(now time.Time) (map[string]protocol.Provider, error) {
 			continue
 		}
 		dirty = dirty || changed
-		if cp.Recognized {
-			health[provider] = "ready"
-		} else if cp.Unsupported && health[provider] != "ready" {
+		if cp.Unsupported {
 			health[provider] = "unsupported"
+		} else if cp.Recognized && health[provider] != "permissionDenied" {
+			health[provider] = "ready"
 		}
 		importing = importing || cp.Backfill
 	}
