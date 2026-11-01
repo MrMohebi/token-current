@@ -15,17 +15,19 @@
 
 Think of an internet speed meter, but for AI token consumption. Glance at the rate, click for a graph, and see where today's tokens went. Token Current reads the local logs your coding tools already create — no API keys, agent plugins, or account setup.
 
-**[Download for Mac](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.zip)** · [Install](#install) · [Read the meter](#read-the-meter) · [Troubleshooting](#troubleshooting)
+**[Download for Mac (.dmg)](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.dmg)** · [Install](#install) · [Read the meter](#read-the-meter) · [Troubleshooting](#troubleshooting)
 
 ## Install
 
 You need **macOS 14 Sonoma or later**, on an Apple silicon or Intel Mac. One universal download works for both.
 
-### Option 1: download and open
+### Option 1: drag to Applications — recommended
 
-1. **[Download Token Current](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.zip)** and double-click the ZIP to unzip it.
-2. Drag **TokenCurrent.app** into your **Applications** folder.
-3. Open the app. Look for the **up/down arrows in the menu bar**, near the clock. There is no Dock icon.
+1. **[Download Token Current.dmg](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.dmg)** and double-click it.
+2. In the window that opens, drag **TokenCurrent.app** onto the **Applications** shortcut.
+3. Open **Token Current** from Applications, then eject the disk image. Look for the **up/down arrows in the menu bar**, near the clock. There is no Dock icon.
+
+Prefer a ZIP? [Download the same app as a ZIP](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.zip), unzip it, and move the app to Applications.
 
 **First-launch note:** this initial release is ad-hoc signed and **not Apple-notarized**. If macOS blocks it, try opening it once, then go to **System Settings → Privacy & Security → Open Anyway** for Token Current. You do not need to disable Gatekeeper.
 
@@ -120,7 +122,7 @@ Compressed `.jsonl.zst` archives are not supported in v1. Older fork logs can un
 
 ## Update or uninstall
 
-**Update:** quit the app, download the latest ZIP, and replace the existing app in the same Applications folder. If you used the terminal installer, run that command again. Settings and local usage records stay in place.
+**Update:** quit the app, open the latest DMG, and drag the new app into Applications. Choose **Replace** when asked. If you used the terminal installer, run that command again. Settings and local usage records stay in place.
 
 **Uninstall:** turn off Launch at login, quit from the More menu, then move TokenCurrent.app to the Trash. Optional local usage data is in `~/Library/Application Support/Token Current`; preferences use bundle ID `app.tokencurrent.mac`.
 
@@ -158,6 +160,14 @@ ARCHES="arm64 x86_64" SIGNING_MODE=adhoc Scripts/package_app.sh release
 ```
 
 The result is **`build/TokenCurrent.app`**. Packaging draws the icon natively and assembles a standard macOS app bundle.
+
+Create a drag-to-Applications disk image from that app:
+
+```bash
+Scripts/create_dmg.sh
+```
+
+The result is **`build/TokenCurrent-macos-universal.dmg`**. Its app matches the input bundle; the Finder window contains the app and an Applications shortcut.
 
 <details>
 <summary><strong>Architecture, verification, and release details</strong></summary>
