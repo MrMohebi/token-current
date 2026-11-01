@@ -16,7 +16,7 @@ final class MeshController {
     var mode: MeshMode { didSet { settings.mode = mode; changed() } }
     var selectedID = "all"
     var relayURL: String
-    var localName: String
+    var localName: String { didSet { settings.localName = localName; settings.save() } }
     var peers: [PairedMachine] { settings.peers }
     var machines: [NetworkMachine] = []
     var discovered: [TailnetPeer] = []
@@ -24,6 +24,7 @@ final class MeshController {
     var busy = false
     var issuedToken: String?
     var isEnabled: Bool { mode != .local }
+    var relayMachines: [NetworkMachine] { remote }
     var isPublishing: Bool { settings.relayLocalID != nil }
 
     init() {
@@ -106,7 +107,6 @@ final class MeshController {
     }
     func update(local snapshot: MonitorSnapshot, available: Bool) -> MonitorSnapshot {
         sequence += 1
-        settings.localName = localName // Saved with connection changes, not every tick.
         let id = mode == .relay ? settings.relayLocalID ?? settings.localID : settings.localID
         let sample = NetworkSnapshot(id: id, name: localName, bootID: bootID, sequence: sequence, local: snapshot)
         local = available ? sample : nil
@@ -129,12 +129,14 @@ final class MeshController {
         if mode == .relay {
             do {
                 let api = try relayAPI()
+                var publishError: String?
                 if let local, settings.relayLocalID != nil, let token = PairingKeychain.read("publisher") {
-                    try await MeshAPI(origin: settings.relayURL, token: token).publish(local)
+                    do { try await MeshAPI(origin: settings.relayURL, token: token).publish(local) }
+                    catch { publishError = "This Mac could not publish. Rotate its token or check the relay connection." }
                 }
                 let mesh = try await api.mesh()
                 guard version == generation else { return }
-                remote = Array(mesh.machines.prefix(128)); error = nil
+                remote = Array(mesh.machines.prefix(128)); error = publishError
             } catch { if version == generation { self.error = error.localizedDescription } }
         } else {
             let connections = settings.peers.compactMap { peer -> (PairedMachine, String)? in

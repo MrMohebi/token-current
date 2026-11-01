@@ -132,7 +132,10 @@ final class MonitorModel {
                     monitoringError = nil
                     let paths = await engine.watchedDirectories()
                     if paths != watchedPaths { watcher?.watch(paths); watchedPaths = paths }
-                } catch { monitoringError = "Monitoring stopped: \(error.localizedDescription)" }
+                } catch {
+                    monitoringError = "Local monitoring stopped: \(error.localizedDescription)"
+                    if mesh.isEnabled { snapshot = mesh.update(local: MonitorSnapshot(timestamp: .now, importing: false), available: false) }
+                }
                 try await Task.sleep(for: .seconds(1))
             }
         } catch is CancellationError {

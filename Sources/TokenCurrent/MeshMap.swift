@@ -4,7 +4,7 @@ import TokenCurrentCore
 
 struct MeshMap: View {
     @Bindable var mesh: MeshController
-    private var visible: [NetworkMachine] { Array(mesh.machines.prefix(8)) }
+    private var visible: [NetworkMachine] { Array(mesh.machines.prefix(6)) }
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -53,8 +53,8 @@ struct MeshMap: View {
                 ForEach(mesh.machines) { machine in Text(machine.name).tag(machine.id) }
             }
             .labelsHidden()
-            if mesh.machines.count > 8 {
-                Text("Showing 8 nodes. Select any machine in the menu above.").font(.caption2).foregroundStyle(.secondary)
+            if mesh.machines.count > 6 {
+                Text("Showing 6 nodes. Select any machine in the menu above.").font(.caption2).foregroundStyle(.secondary)
             }
         }
     }

@@ -71,7 +71,7 @@ struct MeshSettingsView: View {
                     }
                     Text("Paste the device token into token-current-agent configure on that machine. The management token stays in your Mac’s Keychain.")
                         .font(.caption).foregroundStyle(.secondary)
-                    ForEach(mesh.machines.filter { $0.id.count == 32 }) { machine in
+                    ForEach(mesh.relayMachines) { machine in
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(machine.name)

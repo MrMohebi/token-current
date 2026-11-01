@@ -4,7 +4,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 BIN_DIR="${TOKEN_CURRENT_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$BIN_DIR"
-install -m 755 token-current-agent "$BIN_DIR/token-current-agent"
+STAGED_BINARY=$(mktemp "$BIN_DIR/.token-current-agent.XXXXXX")
+trap 'rm -f "$STAGED_BINARY"' EXIT
+install -m 755 token-current-agent "$STAGED_BINARY"
+mv -f "$STAGED_BINARY" "$BIN_DIR/token-current-agent"
 CONFIG_BASE="${XDG_CONFIG_HOME:-$HOME/.config}"
 if [[ ! -f "$CONFIG_BASE/Token Current/agent.json" ]]; then
   "$BIN_DIR/token-current-agent" init

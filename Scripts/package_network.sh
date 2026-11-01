@@ -9,7 +9,7 @@ for TARGET in linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
   STAGE=$(mktemp -d)
   SUFFIX=""; [[ "$TARGET_OS" != windows ]] || SUFFIX=.exe
   CGO_ENABLED=0 GOOS="$TARGET_OS" GOARCH="$TARGET_ARCH" go build -trimpath -ldflags='-s -w' -o "$STAGE/token-current-agent$SUFFIX" ./cmd/token-current-agent
-  cp "$ROOT/LICENSE" "$STAGE/LICENSE"
+  cp "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/THIRD_PARTY_NOTICES.md"
   cp "$ROOT/docs/NETWORK.md" "$STAGE/README.md"
   if [[ "$TARGET_OS" == windows ]]; then
     cp install/install.ps1 "$STAGE/install.ps1"
