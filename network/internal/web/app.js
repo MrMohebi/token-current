@@ -42,9 +42,9 @@ function drawRows() {
   $('machines').replaceChildren();
   for (const machine of mesh.machines) {
     const row = document.createElement('tr'), first = document.createElement('td'), button = document.createElement('button'); button.textContent = machine.name; button.addEventListener('click', () => select(machine.id)); first.append(button);
-    const small = document.createElement('small'); small.textContent = machine.platform || 'Waiting for first report'; first.append(small); row.append(first);
+    const small = document.createElement('small'); small.textContent = ({darwin:'macOS',macos:'macOS',linux:'Linux',windows:'Windows'})[machine.platform] || 'Waiting for first report'; first.append(small); row.append(first);
     const status = document.createElement('td'), badge = document.createElement('span'); badge.className = 'status' + (online(machine) ? ' online' : ''); badge.textContent = online(machine) ? 'Online' : machine.receivedAt ? 'Offline' : 'Waiting'; status.append(badge);
-    const source = document.createElement('small'); source.textContent = machine.snapshot ? providers(machine).map(p => p.health).join(' · ') : 'Configure the daemon to connect'; status.append(source); row.append(status);
+    const source = document.createElement('small'); source.textContent = machine.snapshot ? Object.entries(machine.snapshot.providers).filter(([name]) => $('provider').value === 'all' || name === $('provider').value).map(([name,p]) => `${name === 'claude' ? 'Claude' : 'Codex'}: ${({ready:'connected',missing:'not found',waiting:'waiting',importing:'reading history',permissionDenied:'access denied',unsupported:'update needed',paused:'paused'})[p.health] || 'unavailable'}`).join(' · ') : 'Configure the daemon to connect'; status.append(source); row.append(status);
     const speed = document.createElement('td'); speed.textContent = measurable(machine) ? compact(rate(machine)) + '/s' : '—'; row.append(speed);
     const total = document.createElement('td'), counts = totals([machine]); total.textContent = machine.snapshot ? compact(counts.input + counts.output) : '—'; row.append(total);
     const actions = document.createElement('td');

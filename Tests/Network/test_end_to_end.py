@@ -97,4 +97,39 @@ class NetworkEndToEnd(unittest.TestCase):
                     try: p.wait(timeout=5)
                     except subprocess.TimeoutExpired: p.kill();p.wait()
 
+    @unittest.skipIf(os.name == 'nt', 'Linux installer and POSIX CLI fixture')
+    def test_linux_update_and_tailscale_serve_helper(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as directory:
+            d=Path(directory);stage=d/'archive';stage.mkdir()
+            binary=stage/'token-current-agent'
+            subprocess.run(['go','build','-o',str(binary),'./cmd/token-current-agent'],cwd=ROOT/'network',check=True)
+            shutil.copy(ROOT/'network/install/install.sh',stage/'install.sh')
+            env=dict(os.environ, XDG_CONFIG_HOME=str(d/'config'), TOKEN_CURRENT_BIN_DIR=str(d/'bin'))
+            subprocess.run(['bash',str(stage/'install.sh'),'--no-service'],env=env,check=True,stdout=subprocess.DEVNULL)
+            config=d/'config'/'Token Current'/'agent.json';original=json.loads(config.read_text())
+            original['listen']=f'127.0.0.1:{port()}'
+            config.write_text(json.dumps(original))
+            installed=d/'bin'/'token-current-agent'
+            p=subprocess.Popen([str(installed),'run'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            try:
+                eventually(lambda: request('http://'+original['listen']+'/healthz'))
+                subprocess.run(['bash',str(stage/'install.sh'),'--no-service'],env=env,check=True,stdout=subprocess.DEVNULL)
+                self.assertEqual(json.loads(config.read_text())['readToken'],original['readToken'])
+                self.assertIsNone(p.poll(), 'Updating killed the running process')
+            finally:
+                p.terminate();p.wait(timeout=5)
+            # Exercise Tailscale setup without modifying a real tailnet.
+            original['listen']='127.0.0.1:8790';config.write_text(json.dumps(original))
+            fake=d/'bin'/'tailscale'
+            fake.write_text("#!/usr/bin/env python3\nimport json,os,sys\nfrom pathlib import Path\na=sys.argv[1:]\nif a==['status','--json']: print(json.dumps({'BackendState':'Running','Self':{'DNSName':'fixture.tailnet.ts.net.'},'Peer':{}}))\nelif a==['serve','status','--json']: print(Path(os.environ['SERVE_FIXTURE']).read_text())\nelse: Path(os.environ['SERVE_CALL']).write_text(json.dumps(a))\n")
+            fake.chmod(0o755);fixture=d/'serve.json';call=d/'call.json';fixture.write_text('{}')
+            env.update(PATH=str(d/'bin')+os.pathsep+env['PATH'], SERVE_FIXTURE=str(fixture), SERVE_CALL=str(call))
+            result=subprocess.run([str(installed),'tailscale'],env=env,check=True,capture_output=True,text=True)
+            self.assertIn('https://fixture.tailnet.ts.net:8790',result.stdout)
+            self.assertEqual(json.loads(call.read_text()),['serve','--bg','--https=8790','http://127.0.0.1:8790'])
+            call.unlink();fixture.write_text('{"Web":{"fixture:8790":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:9000"}}}}}')
+            result=subprocess.run([str(installed),'tailscale'],env=env,capture_output=True,text=True)
+            self.assertNotEqual(result.returncode,0);self.assertFalse(call.exists(),'Overwrote another Serve mapping')
+
 if __name__ == '__main__': unittest.main()
