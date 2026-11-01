@@ -6,7 +6,7 @@ struct MenuBarReadout: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: model.isPaused ? "pause" : "arrow.up.arrow.down")
+            Image(systemName: model.isPaused && !model.mesh.isEnabled ? "pause" : "arrow.up.arrow.down")
                 .font(.system(size: 11, weight: .medium))
             if model.density != .icon {
                 Text(TokenFormat.rate(model.rate))

@@ -121,14 +121,14 @@ struct MeterPopover: View {
     private func counter(_ title: String, value: Int64) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(model.hasMeasurement || (model.mesh.isEnabled && model.mesh.machines.contains { $0.snapshot != nil }) ? TokenFormat.compact(Double(value)) : "—")
+            Text(model.hasTotals ? TokenFormat.compact(Double(value)) : "—")
                 .font(.system(.title3, design: .rounded, weight: .medium))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(model.hasMeasurement ? "\(title), \(value.formatted()) tokens today" : "\(title), no measurement")
+        .accessibilityLabel(model.hasTotals ? "\(title), \(value.formatted()) tokens today" : "\(title), no measurement")
     }
 
     private var footer: some View {

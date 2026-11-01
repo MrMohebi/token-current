@@ -42,6 +42,16 @@ final class MonitorModel {
     var totals: TokenCounts { snapshot.total(for: filter.provider) }
     var selectedProviders: [Provider] { filter.provider.map { [$0] } ?? Provider.allCases }
     var hasMeasurement: Bool { selectedProviders.contains { snapshot.health[$0]?.isMeasurable == true } }
+    var hasTotals: Bool {
+        hasMeasurement || (mesh.isEnabled && mesh.machines.contains { machine in
+            guard mesh.selectedID == "all" || machine.id == mesh.selectedID,
+                  let sample = machine.snapshot, sample.day == NetworkSnapshot.utcDay(.now) else { return false }
+            return selectedProviders.contains { p in
+                guard let value = sample.providers[p.rawValue] else { return false }
+                return value.health == "ready" || value.totals.total > 0
+            }
+        })
+    }
     var displayedError: String? { errorMessage ?? monitoringError ?? (mesh.isEnabled ? mesh.error : nil) }
     var status: String {
         if displayedError != nil { return "Needs attention" }
