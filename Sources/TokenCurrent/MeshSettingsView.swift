@@ -125,6 +125,9 @@ struct MeshSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .task(id: mesh.mode) {
+            if mesh.mode == .tailscale && mesh.discovered.isEmpty { await mesh.discover() }
+        }
         .confirmationDialog("Remove \(pendingRemoval?.name ?? "machine")?", isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }), titleVisibility: .visible) {
             Button("Remove and revoke token", role: .destructive) { if let m = pendingRemoval { Task { await mesh.remove(m.id) } }; pendingRemoval = nil }
         }

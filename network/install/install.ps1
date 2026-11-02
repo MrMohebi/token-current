@@ -19,7 +19,7 @@ $Principal = New-ScheduledTaskPrincipal -UserId $Identity -LogonType Interactive
 $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings -Force | Out-Null
 # Existing signed-in Tailscale installations need no copied pairing token.
-if (Get-Command tailscale -ErrorAction SilentlyContinue) { & $Binary tailscale }
+if ((Get-Command tailscale -ErrorAction SilentlyContinue) -or (Test-Path 'C:\Program Files\Tailscale\tailscale.exe')) { & $Binary tailscale }
 Start-ScheduledTask -TaskName $TaskName
 Write-Host "Installed and running. Pairing token: & '$Binary' token"
 Write-Host "Tailscale: & '$Binary' tailscale"

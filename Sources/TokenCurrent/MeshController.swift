@@ -79,10 +79,19 @@ final class MeshController {
             guard mesh.machines.count == 1, let machine = mesh.machines.first else { throw MeshAPIError.invalid }
             guard version == generation else { return }
             guard settings.peers.count < 32 || settings.peers.contains(where: { $0.url == origin }) else { throw MeshAPIError.invalid }
-            let id = settings.peers.first(where: { $0.url == origin })?.id ?? UUID().uuidString
-            settings.peers.removeAll { $0.id == id }
+            var aliases: Set<String> = [api.origin.host() ?? ""]
+            for peer in discovered where peer.url == origin {
+                aliases.formUnion(peer.TailscaleIPs)
+                aliases.insert(peer.DNSName.trimmingCharacters(in: CharacterSet(charactersIn: ".")))
+            }
+            let replaced = settings.peers.filter { peer in
+                aliases.contains(URL(string: peer.url)?.host()?.lowercased() ?? "")
+            }
+            let id = replaced.first?.id ?? UUID().uuidString
+            let replacedIDs = Set(replaced.map(\.id))
+            settings.peers.removeAll { replacedIDs.contains($0.id) }
+            for peer in replaced { PairingKeychain.remove(peer.id) }
             settings.peers.append(PairedMachine(id: id, name: name.isEmpty ? machine.name : name, url: origin, trustsTailscale: true))
-            PairingKeychain.remove(id)
             changed()
             remote = [machine]
         } catch let failure as MeshAPIError {
