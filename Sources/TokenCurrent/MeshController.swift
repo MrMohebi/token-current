@@ -71,7 +71,7 @@ final class MeshController {
         let version = generation
         do {
             guard let origin = MeshAPI.tailscaleOrigin(address) else {
-                error = "Enter the server’s Tailscale IP, such as 100.72.15.20."
+                error = "Enter the server’s Tailscale IP, such as 100.64.0.10."
                 return
             }
             let api = try MeshAPI(origin: origin, trustTailscale: true)
@@ -90,7 +90,6 @@ final class MeshController {
             let id = replaced.first?.id ?? UUID().uuidString
             let replacedIDs = Set(replaced.map(\.id))
             settings.peers.removeAll { replacedIDs.contains($0.id) }
-            for peer in replaced { PairingKeychain.remove(peer.id) }
             settings.peers.append(PairedMachine(id: id, name: name.isEmpty ? machine.name : name, url: origin, trustsTailscale: true))
             changed()
             remote = [machine]
@@ -102,7 +101,10 @@ final class MeshController {
         }
     }
     func unpair(_ id: String) {
-        settings.peers.removeAll { $0.id == id }; PairingKeychain.remove(id); changed()
+        let usedToken = settings.peers.first(where: { $0.id == id })?.trustsTailscale != true
+        settings.peers.removeAll { $0.id == id }
+        if usedToken { PairingKeychain.remove(id) }
+        changed()
     }
     func discover() async {
         busy = true; defer { busy = false }
