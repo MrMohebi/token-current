@@ -21,6 +21,10 @@ function render() {
   const value = chosen.reduce((n, m) => n + rate(m), 0), counts = totals(chosen);
   $('selection').textContent = selected ? (chosen[0]?.name || 'Machine removed') : 'All machines';
   $('rate').textContent = available ? compact(value) : '—';
+  const last = Math.max(0, ...chosen.flatMap(m => providers(m).map(p => p.lastUsageAt || 0)));
+  const seconds = Math.max(0, Math.floor(Date.now() / 1000 - last));
+  const age = seconds < 60 ? `${seconds}s` : seconds < 3600 ? `${Math.floor(seconds / 60)}m` : `${Math.floor(seconds / 3600)}h`;
+  $('last-usage').textContent = (last ? `Last usage report ${age} ago. ` : '') + (available && value === 0 ? 'No tokens reported in the last 10s. Logs update in batches.' : '');
   for (const name of ['input', 'output', 'cached']) $(name).textContent = chosen.some(m => m.snapshot) ? compact(counts[name]) : '—';
   $('count').textContent = `${mesh.machines.filter(online).length} online / ${mesh.machines.length} total`;
   $('empty').hidden = mesh.machines.length > 0;

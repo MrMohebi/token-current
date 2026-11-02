@@ -26,10 +26,11 @@ type checkpoint struct {
 	Backfill     bool
 }
 type state struct {
-	Day     string
-	Totals  map[string]protocol.Counts
-	Records map[string]protocol.Counts
-	Files   map[string]*checkpoint
+	LastUsage map[string]float64
+	Day       string
+	Totals    map[string]protocol.Counts
+	Records   map[string]protocol.Counts
+	Files     map[string]*checkpoint
 }
 type receipt struct {
 	Time     time.Time
@@ -54,6 +55,9 @@ func New(path, claudeHome, codexHome string) (*Monitor, error) {
 	}, initial: true}
 	if err := persist.Load(path, &m.state); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
+	}
+	if m.state.LastUsage == nil {
+		m.state.LastUsage = map[string]float64{}
 	}
 	if m.state.Totals == nil {
 		m.state.Totals = map[string]protocol.Counts{}
@@ -180,7 +184,7 @@ func (m *Monitor) Tick(now time.Time) (map[string]protocol.Provider, error) {
 		if status != "ready" {
 			rate = 0
 		}
-		result[name] = protocol.Provider{Health: status, Rate: rate, Totals: m.state.Totals[name]}
+		result[name] = protocol.Provider{Health: status, Rate: rate, Totals: m.state.Totals[name], LastUsageAt: m.state.LastUsage[name]}
 	}
 	if dirty {
 		if err := persist.Save(m.path, m.state); err != nil {
@@ -247,6 +251,9 @@ func (m *Monitor) consume(path, provider string, cp *checkpoint, dayStart, now t
 					m.state.Records[observation.Key] = high
 					if !observation.Baseline && !observation.Time.Before(dayStart) && observation.Time.Before(dayStart.Add(24*time.Hour)) {
 						m.state.Totals[provider] = m.state.Totals[provider].Add(delta)
+						if delta.Total() > 0 {
+							m.state.LastUsage[provider] = max(m.state.LastUsage[provider], float64(observation.Time.UnixNano())/1e9)
+						}
 						if live && delta.Total() > 0 {
 							m.receipts = append(m.receipts, receipt{now, provider, delta.Total()})
 						}

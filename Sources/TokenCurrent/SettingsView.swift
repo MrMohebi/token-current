@@ -67,7 +67,7 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Token Current", value: "1.2.0")
+                LabeledContent("Token Current", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Development")
                 Button("Quit Token Current") { NSApp.terminate(nil) }
             }
         }

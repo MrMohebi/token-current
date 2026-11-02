@@ -90,6 +90,15 @@ public final class SQLiteStore {
         }
     }
 
+    public func lastUsage(provider: Provider, before end: Date) throws -> Date? {
+        try statement("SELECT max(time) FROM events WHERE provider=? AND time<? AND input+output>0") { query in
+            bind(provider.rawValue, at: 1, to: query)
+            sqlite3_bind_double(query, 2, end.timeIntervalSince1970)
+            guard sqlite3_step(query) == SQLITE_ROW else { throw failure() }
+            return sqlite3_column_type(query, 0) == SQLITE_NULL ? nil : Date(timeIntervalSince1970: sqlite3_column_double(query, 0))
+        }
+    }
+
     public func hasUsage(provider: Provider) throws -> Bool {
         try statement("SELECT 1 FROM records WHERE provider=? LIMIT 1") { query in
             bind(provider.rawValue, at: 1, to: query)

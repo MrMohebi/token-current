@@ -12,6 +12,7 @@ final class MonitoringEngineTests: XCTestCase, @unchecked Sendable {
         let first = try await engine.tick(at: now)
         XCTAssertEqual(first.total(for: nil).total, 1_100)
         XCTAssertEqual(first.rate(for: nil), 0)
+        XCTAssertEqual(try XCTUnwrap(first.lastUsage[.claude]).timeIntervalSince1970, floor(now.timeIntervalSince1970), accuracy: 0.001)
         XCTAssertEqual(first.health[.codex], .waiting)
 
         try fixture.append(provider: .claude, id: "live", input: 200, output: 50, time: now.addingTimeInterval(1))
@@ -22,6 +23,7 @@ final class MonitoringEngineTests: XCTestCase, @unchecked Sendable {
         let restored = try await restarted.tick(at: now.addingTimeInterval(2))
         XCTAssertEqual(restored.total(for: .claude).total, 1_350)
         XCTAssertEqual(restored.rate(for: .claude), 0)
+        XCTAssertEqual(try XCTUnwrap(restored.lastUsage[.claude]).timeIntervalSince1970, floor(now.addingTimeInterval(1).timeIntervalSince1970), accuracy: 0.001)
 
         await restarted.setPaused(true)
         try fixture.append(provider: .claude, id: "paused", input: 80, output: 20, time: now.addingTimeInterval(3))

@@ -14,7 +14,7 @@ export ARCHES=${ARCHES:-"arm64 x86_64"}
 export SIGNING_MODE=release
 "$ROOT_DIR/Scripts/package_app.sh" release
 APP="$ROOT_DIR/build/TokenCurrent.app"
-ZIP="$ROOT_DIR/build/TokenCurrent-${MARKETING_VERSION}.zip"
+ZIP="$ROOT_DIR/build/TokenCurrent-v${MARKETING_VERSION}-macos-universal.zip"
 TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/TokenCurrent-notary.XXXXXX")
 trap 'rm -rf "$TEMP_DIR"' EXIT
 ditto --norsrc -c -k --keepParent "$APP" "$TEMP_DIR/submit.zip"

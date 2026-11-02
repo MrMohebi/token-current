@@ -5,7 +5,7 @@ on:
       release_tag:
         description: Existing release whose exact app should be packaged
         required: true
-        default: v1.1.0
+        default: v1.2.1
 permissions:
   contents: read
 jobs:
@@ -19,22 +19,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download existing release app and checksums
         run: |
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern TokenCurrent-macos-universal.zip --pattern SHA256SUMS.txt --dir build/source
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern TokenCurrent-$RELEASE_TAG-macos-universal.zip --pattern SHA256SUMS-$RELEASE_TAG.txt --dir build/source
           python3 - <<'PY'
-          import hashlib
+          import hashlib, os
           from pathlib import Path
           root = Path('build/source')
-          sums = dict((line.split()[1], line.split()[0]) for line in (root/'SHA256SUMS.txt').read_text().splitlines())
-          app = root/'TokenCurrent-macos-universal.zip'
+          sums = dict((line.split()[1], line.split()[0]) for line in (root/f'SHA256SUMS-{os.environ["RELEASE_TAG"]}.txt').read_text().splitlines())
+          app = root/f'TokenCurrent-{os.environ["RELEASE_TAG"]}-macos-universal.zip'
           assert hashlib.sha256(app.read_bytes()).hexdigest() == sums[app.name]
           PY
-          ditto -x -k build/source/TokenCurrent-macos-universal.zip build/source/expanded
+          ditto -x -k build/source/TokenCurrent-$RELEASE_TAG-macos-universal.zip build/source/expanded
       - name: Create drag-to-Applications DMG
-        run: Scripts/create_dmg.sh build/source/expanded/TokenCurrent.app build/TokenCurrent-macos-universal.dmg
+        run: Scripts/create_dmg.sh build/source/expanded/TokenCurrent.app build/TokenCurrent-$RELEASE_TAG-macos-universal.dmg
       - name: Verify mounted image and unchanged application
         run: |
           mkdir -p build/verify-mount
-          hdiutil attach -quiet -readonly -noverify -noautoopen -mountpoint "$PWD/build/verify-mount" build/TokenCurrent-macos-universal.dmg
+          hdiutil attach -quiet -readonly -noverify -noautoopen -mountpoint "$PWD/build/verify-mount" build/TokenCurrent-$RELEASE_TAG-macos-universal.dmg
           trap 'hdiutil detach "$PWD/build/verify-mount" -quiet' EXIT
           test "$(readlink build/verify-mount/Applications)" = /Applications
           codesign --verify --deep --strict build/verify-mount/TokenCurrent.app
@@ -44,17 +44,17 @@ jobs:
       - name: Prepare complete release checksums
         run: |
           python3 - <<'PY'
-          import hashlib
+          import hashlib, os
           from pathlib import Path
-          old = Path('build/source/SHA256SUMS.txt').read_text().splitlines()
-          dmg = Path('build/TokenCurrent-macos-universal.dmg')
+          old = Path(f'build/source/SHA256SUMS-{os.environ["RELEASE_TAG"]}.txt').read_text().splitlines()
+          dmg = Path(f'build/TokenCurrent-{os.environ["RELEASE_TAG"]}-macos-universal.dmg')
           lines = [line for line in old if line.split()[1] != dmg.name]
           lines.append(hashlib.sha256(dmg.read_bytes()).hexdigest() + '  ' + dmg.name)
-          Path('build/SHA256SUMS.txt').write_text('\n'.join(lines) + '\n')
+          Path(f'build/SHA256SUMS-{os.environ["RELEASE_TAG"]}.txt').write_text('\n'.join(lines) + '\n')
           PY
       - uses: actions/upload-artifact@v4
         with:
           name: TokenCurrent-dmg-release
           path: |
-            build/TokenCurrent-macos-universal.dmg
-            build/SHA256SUMS.txt
+            build/TokenCurrent-${{ inputs.release_tag }}-macos-universal.dmg
+            build/SHA256SUMS-${{ inputs.release_tag }}.txt

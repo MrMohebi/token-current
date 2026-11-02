@@ -44,3 +44,11 @@ On November 2, the installed server was inspected directly. Tailscale Serve exis
 The new private listener on port 8791 was verified on the server's actual Tailscale IP without a token. A browser connection from the Mac's Tailscale IP loaded the live dashboard successfully; the established source IP was verified with the server socket table. No real usage screenshots were added to the repository.
 
 macOS 14+ ATS requires explicit IP/CIDR exceptions; the app bundle now permits the Tailscale ranges and loopback. A native packaged-app check runs against a synthetic Tailscale-range IP on the Mac CI runner to exercise URLSession and the actual bundle policy. Legacy authenticated listeners and relay enrollment retain their tokens.
+
+## Version 1.2.1 reporting and release filenames
+
+The live Linux agent was sampled once per second during actual Codex activity. Its rate became positive after new usage records, and returned to zero after the 10-second window. The browser dashboard on the connected Mac showed the same nonzero rate. No parser failure or stuck collector was reproduced. Source logs can leave gaps longer than the averaging window while reasoning or running tools.
+
+The update adds persisted last-usage timestamps to agents, local Mac storage, optional wire fields, and the combined meter. Backfill and restart continue to produce zero live throughput. Both interfaces explain idle reporting gaps. Older agents remain compatible and simply omit the timestamp.
+
+All public downloads now include their release tag, including the checksum manifest. Both terminal installers resolve latest to a fixed tag before fetching the archive and its checksum. `python3 Scripts/release_manifest.py RELEASE_DIRECTORY vX.Y.Z` rejects incomplete releases, unversioned files, and unexpected versions before creating the manifest. Installed app and executable names remain stable.

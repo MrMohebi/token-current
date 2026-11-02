@@ -15,7 +15,7 @@
 
 Think of an internet speed meter, but for AI token consumption. Glance at the rate, click for a graph, and see where today's tokens went. Token Current reads the local logs your coding tools already create — no API keys, agent plugins, or account setup.
 
-**[Download for Mac (.dmg)](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.dmg)** · [Install](#install) · [Read the meter](#read-the-meter) · [Troubleshooting](#troubleshooting)
+**[Download for Mac (.dmg)](https://github.com/MrMohebi/token-current/releases/download/v1.2.1/TokenCurrent-v1.2.1-macos-universal.dmg)** · [Install](#install) · [Read the meter](#read-the-meter) · [Troubleshooting](#troubleshooting)
 
 ## Connect a fleet
 
@@ -40,11 +40,11 @@ You need **macOS 14 Sonoma or later**, on an Apple silicon or Intel Mac. One uni
 
 ### Option 1: drag to Applications — recommended
 
-1. **[Download Token Current.dmg](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.dmg)** and double-click it.
+1. **[Download Token Current.dmg](https://github.com/MrMohebi/token-current/releases/download/v1.2.1/TokenCurrent-v1.2.1-macos-universal.dmg)** and double-click it.
 2. In the window that opens, drag **TokenCurrent.app** onto the **Applications** shortcut.
 3. Open **Token Current** from Applications, then eject the disk image. Look for the **up/down arrows in the menu bar**, near the clock. There is no Dock icon.
 
-Prefer a ZIP? [Download the same app as a ZIP](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-macos-universal.zip), unzip it, and move the app to Applications.
+Prefer a ZIP? [Download the same app as a ZIP](https://github.com/MrMohebi/token-current/releases/download/v1.2.1/TokenCurrent-v1.2.1-macos-universal.zip), unzip it, and move the app to Applications.
 
 **First-launch note:** this initial release is ad-hoc signed and **not Apple-notarized**. If macOS blocks it, try opening it once, then go to **System Settings → Privacy & Security → Open Anyway** for Token Current. You do not need to disable Gatekeeper.
 
@@ -134,11 +134,13 @@ In Settings, choose the **data home** containing `projects` for Claude, or `sess
 | Not found | Select the correct data home in Settings and click **Apply folders**. |
 | Folder access denied | Choose a folder your macOS account can read and check its permissions in Finder. |
 | Unsupported log format | Check for a newer Token Current release. [Report the tool version and status](https://github.com/MrMohebi/token-current/issues/new); do not post private transcripts. |
-| Zero while the AI works | The source may not have flushed a usage record yet. The meter also returns to zero after 10 seconds without new usage. |
+| Zero while the AI works | Check **Last usage report**. Codex and Claude report in batches, often after a response or tool call. A gap longer than 10 seconds produces `0`, even during reasoning. Today’s totals stay visible; the next usage record moves the meter again. |
 | A new session appears late | Discovery has a 30-second fallback. Very large log trees may use that interval. |
 | Installer says checksum/signature failed | Your installed app is left unchanged. Retry the download or use the manual ZIP; report repeated failures. |
 
 Compressed `.jsonl.zst` archives are not supported in v1. Older fork logs can undercount their first request when inherited usage cannot be separated. Local token counts are not a substitute for the provider's billing or quota dashboard.
+
+Every release download includes its version, for example `TokenCurrent-v1.2.1-macos-universal.dmg`. The installed app keeps the name `TokenCurrent.app`, so updates replace it cleanly. The terminal installers resolve the latest release once, then verify matching versioned checksums.
 
 ## Update or uninstall
 
@@ -150,7 +152,7 @@ The app retains only usage metadata, deduplication counters, and file checkpoint
 
 ## Icons and logos
 
-**[Download the brand kit](https://github.com/MrMohebi/token-current/releases/latest/download/TokenCurrent-brand-kit.zip)** for SVG logos, a 1024px PNG app icon, and the native macOS `.icns` file.
+**[Download the brand kit](https://github.com/MrMohebi/token-current/releases/download/v1.2.1/TokenCurrent-v1.2.1-brand-kit.zip)** for SVG logos, a 1024px PNG app icon, and the native macOS `.icns` file.
 
 | Asset | Use |
 | --- | --- |
@@ -187,7 +189,7 @@ Create a drag-to-Applications disk image from that app:
 Scripts/create_dmg.sh
 ```
 
-The result is **`build/TokenCurrent-macos-universal.dmg`**. Its app matches the input bundle; the Finder window contains the app and an Applications shortcut.
+The result is **`build/TokenCurrent-v1.2.1-macos-universal.dmg`**. Its app matches the input bundle; the Finder window contains the app and an Applications shortcut.
 
 <details>
 <summary><strong>Architecture, verification, and release details</strong></summary>

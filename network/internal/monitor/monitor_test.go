@@ -161,3 +161,41 @@ func TestCodexArchiveAgentsAndCumulativeDayBaseline(t *testing.T) {
 		t.Fatal("catch-up leaked into rate")
 	}
 }
+
+func TestLastUsagePersistsWithoutKeepingRateAlive(t *testing.T) {
+	root := t.TempDir()
+	claudeHome := filepath.Join(root, "claude")
+	codex := filepath.Join(root, "codex")
+	dir := filepath.Join(claudeHome, "projects")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().UTC()
+	path := filepath.Join(dir, "session.jsonl")
+	if err := os.WriteFile(path, []byte(claude("report", 100, 10, at)+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ledger := filepath.Join(root, "state.json")
+	m, err := New(ledger, claudeHome, codex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := m.Tick(at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initial["claude"].Rate != 0 || initial["claude"].LastUsageAt != float64(at.UnixNano())/1e9 {
+		t.Fatal(initial)
+	}
+	restored, err := New(ledger, claudeHome, codex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	idle, err := restored.Tick(at.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if idle["claude"].Rate != 0 || idle["claude"].LastUsageAt != initial["claude"].LastUsageAt {
+		t.Fatal(idle)
+	}
+}

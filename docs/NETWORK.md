@@ -39,7 +39,7 @@ Without a usable service manager, installation reports a failure and explains ho
 
 ### Windows
 
-1. Download **TokenCurrent-agent-windows-amd64.zip** from [Releases](https://github.com/MrMohebi/token-current/releases/latest). Use arm64 for a Windows on ARM PC.
+1. Download **TokenCurrent-v1.2.1-agent-windows-amd64.zip** from [Releases](https://github.com/MrMohebi/token-current/releases/latest). Use arm64 for a Windows on ARM PC.
 2. Extract the ZIP.
 3. Open PowerShell in the extracted folder and run:
 
@@ -184,11 +184,11 @@ To manage the same relay from your Mac, choose **Self-hosted relay** in **Settin
 
 ### Run without Docker
 
-Download `token-current-relay-linux-amd64` (or arm64), make it executable, and run as an ordinary user:
+Download `token-current-v1.2.1-relay-linux-amd64` (or arm64), make it executable, and run as an ordinary user:
 
 ```bash
-chmod +x token-current-relay-linux-amd64
-./token-current-relay-linux-amd64 serve --state "$HOME/.config/token-current-relay/state.json"
+chmod +x token-current-v1.2.1-relay-linux-amd64
+./token-current-v1.2.1-relay-linux-amd64 serve --state "$HOME/.config/token-current-relay/state.json"
 ```
 
 Use your own process manager for unattended operation. It binds loopback by default; put Tailscale Serve or an HTTPS reverse proxy in front. Read the management token with the same binary's `token --state ...` command.

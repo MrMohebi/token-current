@@ -40,6 +40,7 @@ final class MonitorModel {
     }
 
     var rate: Double? { monitoringError == nil || mesh.isEnabled ? snapshot.rate(for: filter.provider) : nil }
+    var lastUsage: Date? { selectedProviders.compactMap { snapshot.lastUsage[$0] }.max() }
     var totals: TokenCounts { snapshot.total(for: filter.provider) }
     var selectedProviders: [Provider] { filter.provider.map { [$0] } ?? Provider.allCases }
     var hasMeasurement: Bool { selectedProviders.contains { snapshot.health[$0]?.isMeasurable == true } }

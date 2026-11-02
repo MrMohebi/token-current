@@ -47,6 +47,17 @@ final class MeshTests: XCTestCase {
         XCTAssertThrowsError(try MeshAPI(origin: "https://example.com", trustTailscale: true))
         XCTAssertThrowsError(try MeshAPI(origin: "http://127.0.0.1:8791", trustTailscale: true))
     }
+    func testLastUsageSurvivesWireRoundTripAndMachineFilter() throws {
+        var a = machine("machine-a"), b = machine("machine-b")
+        a.snapshot?.providers["claude"]?.lastUsageAt = now.addingTimeInterval(-60).timeIntervalSince1970
+        b.snapshot?.providers["codex"]?.lastUsageAt = now.addingTimeInterval(-30).timeIntervalSince1970
+        let encoded = try JSONEncoder().encode(a)
+        let restored = try JSONDecoder().decode(NetworkMachine.self, from: encoded)
+        XCTAssertEqual(MeshAccounting.combine([restored, b], at: now).lastUsage[.claude], now.addingTimeInterval(-60))
+        XCTAssertNil(MeshAccounting.combine([restored, b], selectedID: a.id, at: now).lastUsage[.codex])
+        // Older agents omit this optional field and remain compatible.
+        XCTAssertNoThrow(try JSONDecoder().decode(NetworkMachine.self, from: JSONEncoder().encode(machine("legacy-machine"))))
+    }
     func testEndpointTransportRestrictions() {
         for endpoint in ["https://meter.example.com", "http://127.0.0.1:8787", "http://100.100.1.2:8790", "http://[fd7a:115c:a1e0::1]:8790"] {
             XCTAssertNotNil(MeshAPI.endpoint(endpoint), endpoint)

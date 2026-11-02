@@ -1,10 +1,12 @@
 import Foundation
 
 public struct NetworkProvider: Codable, Sendable {
+    public var lastUsageAt: Double?
     public var health: String
     public var rate: Double
     public var totals: TokenCounts
-    public init(health: String, rate: Double, totals: TokenCounts) {
+    public init(health: String, rate: Double, totals: TokenCounts, lastUsageAt: Double? = nil) {
+        self.lastUsageAt = lastUsageAt
         self.health = health; self.rate = rate; self.totals = totals
     }
 }
@@ -27,7 +29,7 @@ public struct NetworkSnapshot: Codable, Sendable {
         day = Self.utcDay(local.timestamp)
         providers = Dictionary(uniqueKeysWithValues: Provider.allCases.map { p in
             let health = local.paused && local.health[p] == .ready ? "paused" : local.importing ? "importing" : Self.wireHealth(local.health[p])
-            return (p.rawValue, NetworkProvider(health: health, rate: local.rate(for: p) ?? 0, totals: local.totals[p] ?? .zero))
+            return (p.rawValue, NetworkProvider(health: health, rate: local.rate(for: p) ?? 0, totals: local.totals[p] ?? .zero, lastUsageAt: local.lastUsage[p]?.timeIntervalSince1970))
         })
     }
 
@@ -45,6 +47,7 @@ public struct NetworkSnapshot: Codable, Sendable {
         return Provider.allCases.allSatisfy { p in
             guard let v = providers[p.rawValue] else { return false }
             let c = v.totals
+            if let last = v.lastUsageAt, !last.isFinite || last < 0 || last > now.timeIntervalSince1970 + 300 { return false }
             return v.rate.isFinite && v.rate >= 0 && v.rate <= 1e12 &&
                 [c.input, c.output, c.cacheRead, c.cacheWrite].allSatisfy { $0 >= 0 && $0 <= 1_000_000_000_000_000 } &&
                 c.cacheRead + c.cacheWrite <= c.input
@@ -102,6 +105,9 @@ public enum MeshAccounting {
             for p in Provider.allCases {
                 guard let value = s.providers[p.rawValue] else { continue }
                 if machine.isOnline(at: now) && value.health == "importing" { importing = true }
+                if let last = value.lastUsageAt, last > 0, last <= now.timeIntervalSince1970 {
+                    result.lastUsage[p] = max(result.lastUsage[p] ?? .distantPast, Date(timeIntervalSince1970: last))
+                }
                 result.totals[p] = (result.totals[p] ?? .zero) + value.totals
                 if machine.isOnline(at: now) && value.health == "ready" {
                     result.health[p] = .ready

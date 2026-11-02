@@ -5,6 +5,7 @@ public struct MonitorSnapshot: Sendable {
     public var health: [Provider: SourceHealth]
     public var totals: [Provider: TokenCounts]
     public var rates: [Provider: Double]
+    public var lastUsage: [Provider: Date] = [:]
     public var graph: [RatePoint]
     public var paused: Bool
     public var importing: Bool

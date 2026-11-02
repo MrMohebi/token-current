@@ -87,9 +87,11 @@ public actor MonitoringEngine {
             totals[provider] = try storage.totals(provider: provider, from: start, to: end)
             rates[provider] = meter.rate(provider: provider, at: now)
         }
-        return MonitorSnapshot(timestamp: now, health: health, totals: totals, rates: rates,
+        var snapshot = MonitorSnapshot(timestamp: now, health: health, totals: totals, rates: rates,
                                graph: meter.graph(at: now), paused: paused,
                                importing: initialScan || !backfilling.isEmpty)
+        for provider in Provider.allCases { snapshot.lastUsage[provider] = try storage.lastUsage(provider: provider, before: now.addingTimeInterval(1)) }
+        return snapshot
     }
 
     private func consume(_ url: URL, provider: Provider, now: Date, dayStart: Date) throws {

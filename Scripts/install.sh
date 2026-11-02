@@ -9,11 +9,14 @@ mac_version=$(sw_vers -productVersion)
 
 release_version=${TOKEN_CURRENT_VERSION:-latest}
 if [[ "$release_version" == "latest" ]]; then
-  release_base="https://github.com/MrMohebi/token-current/releases/latest/download"
-else
-  [[ "$release_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "TOKEN_CURRENT_VERSION must be a tag such as v1.0.0."
-  release_base="https://github.com/MrMohebi/token-current/releases/download/$release_version"
+  resolved=$(curl --fail --silent --show-error --head --location --proto '=https' --tlsv1.2 \
+    -o /dev/null -w '%{url_effective}' "https://github.com/MrMohebi/token-current/releases/latest")
+  release_version=${resolved##*/}
 fi
+[[ "$release_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "TOKEN_CURRENT_VERSION must be a tag such as v1.2.1."
+release_base="https://github.com/MrMohebi/token-current/releases/download/$release_version"
+asset="TokenCurrent-$release_version-macos-universal.zip"
+manifest="SHA256SUMS-$release_version.txt"
 
 install_dir=${TOKEN_CURRENT_INSTALL_DIR:-"$HOME/Applications"}
 [[ "$install_dir" == /* ]] || fail "The installation directory must be an absolute path."
@@ -34,15 +37,15 @@ trap cleanup EXIT
 
 printf 'Downloading Token Current (%s)…\n' "$release_version"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-  "$release_base/TokenCurrent-macos-universal.zip" -o "$work_dir/TokenCurrent-macos-universal.zip"
+  "$release_base/$asset" -o "$work_dir/$asset"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-  "$release_base/SHA256SUMS.txt" -o "$work_dir/SHA256SUMS.txt"
-checksum=$(awk '$2 == "TokenCurrent-macos-universal.zip" && length($1) == 64 { print $1 }' "$work_dir/SHA256SUMS.txt")
+  "$release_base/$manifest" -o "$work_dir/$manifest"
+checksum=$(awk -v asset="$asset" '$2 == asset && length($1) == 64 { print $1 }' "$work_dir/$manifest")
 [[ "$checksum" =~ ^[0-9a-fA-F]{64}$ ]] || fail "The release does not contain a valid app checksum."
-printf '%s  %s\n' "$checksum" 'TokenCurrent-macos-universal.zip' > "$work_dir/app.sha256"
+printf '%s  %s\n' "$checksum" "$asset" > "$work_dir/app.sha256"
 (cd "$work_dir" && shasum -a 256 -c app.sha256) || fail "Download checksum failed; the installed app has not been changed."
 
-ditto -x -k "$work_dir/TokenCurrent-macos-universal.zip" "$work_dir/extracted"
+ditto -x -k "$work_dir/$asset" "$work_dir/extracted"
 bundle="$work_dir/extracted/TokenCurrent.app"
 [[ -d "$bundle" && -x "$bundle/Contents/MacOS/TokenCurrent" ]] || fail "The download does not contain the expected app."
 bundle_id=$(plutil -extract CFBundleIdentifier raw -o - "$bundle/Contents/Info.plist")

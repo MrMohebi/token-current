@@ -85,6 +85,17 @@ struct MeterPopover: View {
             Text("Reported usage · 10s average")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            if let last = model.lastUsage {
+                Text("Last usage report \(last, style: .relative) ago")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if model.rate == 0 {
+                Text("No tokens reported in the last 10s. Logs update in batches.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.rate)

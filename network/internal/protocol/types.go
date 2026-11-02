@@ -34,9 +34,10 @@ func (c Counts) Valid() bool {
 }
 
 type Provider struct {
-	Health string  `json:"health"`
-	Rate   float64 `json:"rate"`
-	Totals Counts  `json:"totals"`
+	LastUsageAt float64 `json:"lastUsageAt,omitempty"`
+	Health      string  `json:"health"`
+	Rate        float64 `json:"rate"`
+	Totals      Counts  `json:"totals"`
 }
 
 type Snapshot struct {
@@ -63,7 +64,7 @@ func (s Snapshot) Validate(now time.Time) error {
 	}
 	for _, name := range []string{"claude", "codex"} {
 		p, ok := s.Providers[name]
-		if !ok || !p.Totals.Valid() || math.IsNaN(p.Rate) || math.IsInf(p.Rate, 0) || p.Rate < 0 || p.Rate > 1e12 {
+		if !ok || math.IsNaN(p.LastUsageAt) || math.IsInf(p.LastUsageAt, 0) || p.LastUsageAt < 0 || p.LastUsageAt > float64(now.Unix()+300) || !p.Totals.Valid() || math.IsNaN(p.Rate) || math.IsInf(p.Rate, 0) || p.Rate < 0 || p.Rate > 1e12 {
 			return errors.New("invalid usage counters")
 		}
 		switch p.Health {

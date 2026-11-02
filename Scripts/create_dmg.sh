@@ -5,8 +5,10 @@ trap 'printf "DMG packaging failed at line %s\n" "$LINENO" >&2' ERR
 [[ "$(uname -s)" == "Darwin" ]] || { echo "DMG packaging requires macOS." >&2; exit 1; }
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 APP=${1:-"$ROOT_DIR/build/TokenCurrent.app"}
-OUTPUT=${2:-"$ROOT_DIR/build/TokenCurrent-macos-universal.dmg"}
 [[ -d "$APP" && -x "$APP/Contents/MacOS/TokenCurrent" ]] || { echo "Build or supply TokenCurrent.app first." >&2; exit 1; }
+VERSION=$(plutil -extract CFBundleShortVersionString raw -o - "$APP/Contents/Info.plist")
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid bundle version' >&2; exit 1; }
+OUTPUT=${2:-"$ROOT_DIR/build/TokenCurrent-v$VERSION-macos-universal.dmg"}
 codesign --verify --deep --strict "$APP"
 mkdir -p "$(dirname "$OUTPUT")"
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/TokenCurrent-dmg.XXXXXX")

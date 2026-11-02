@@ -11,6 +11,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Read release version
+        run: source version.env && echo "RELEASE_TAG=v$MARKETING_VERSION" >> "$GITHUB_ENV"
       - name: Show Swift toolchain
         run: swift --version
       - name: Test accounting and file monitoring
@@ -49,17 +51,17 @@ jobs:
           pkill -x TokenCurrent
       - name: Archive app and brand kit
         run: |
-          ditto -c -k --keepParent build/TokenCurrent.app build/TokenCurrent-macos-universal.zip
+          ditto -c -k --keepParent build/TokenCurrent.app build/TokenCurrent-$RELEASE_TAG-macos-universal.zip
           mkdir -p build/TokenCurrent-brand-kit
           cp assets/brand/*.svg assets/brand/README.md build/TokenCurrent-brand-kit/
           cp .build/TokenCurrent.iconset/icon_512x512@2x.png build/TokenCurrent-brand-kit/TokenCurrent-icon-1024.png
           cp build/TokenCurrent.app/Contents/Resources/Icon.icns build/TokenCurrent-brand-kit/TokenCurrent.icns
-          ditto -c -k --keepParent build/TokenCurrent-brand-kit build/TokenCurrent-brand-kit.zip
+          ditto -c -k --keepParent build/TokenCurrent-brand-kit build/TokenCurrent-$RELEASE_TAG-brand-kit.zip
       - name: Package and verify drag-to-Applications DMG
         run: |
-          Scripts/create_dmg.sh build/TokenCurrent.app build/TokenCurrent-macos-universal.dmg
+          Scripts/create_dmg.sh build/TokenCurrent.app build/TokenCurrent-$RELEASE_TAG-macos-universal.dmg
           mkdir -p build/dmg-check
-          hdiutil attach -quiet -readonly -noverify -noautoopen -mountpoint "$PWD/build/dmg-check" build/TokenCurrent-macos-universal.dmg
+          hdiutil attach -quiet -readonly -noverify -noautoopen -mountpoint "$PWD/build/dmg-check" build/TokenCurrent-$RELEASE_TAG-macos-universal.dmg
           trap 'hdiutil detach "$PWD/build/dmg-check" -quiet' EXIT
           test "$(readlink build/dmg-check/Applications)" = /Applications
           codesign --verify --deep --strict build/dmg-check/TokenCurrent.app
