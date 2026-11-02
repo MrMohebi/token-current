@@ -248,3 +248,11 @@ go build ./cmd/token-current-relay
 ```
 
 Go 1.24+ is required to build. Release archives are standalone binaries; users do not need Go, Node.js, or Python. From the repository root, `Scripts/package_network.sh` produces Linux/Windows amd64/arm64 agent archives and Linux relay binaries. GitHub Actions tests the networking code on Linux, Windows, and macOS. Native Mac UI builds and launch checks run separately on a Mac runner.
+
+For native Mac connection diagnostics, quit the app, then run:
+
+```bash
+/Applications/TokenCurrent.app/Contents/MacOS/TokenCurrent --check-tailnet 100.x.y.z
+```
+
+This tests the same URLSession connection and macOS transport policy used by the menu bar app, prints a short result, and exits. It does not print tokens or conversation data. If macOS requests Local Network access, allow it for Token Current in System Settings → Privacy & Security → Local Network.

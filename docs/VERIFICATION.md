@@ -36,3 +36,11 @@ Use `Scripts/compile_and_run.sh --test` on a Mac, then complete `MAC_VALIDATION.
 - Mac Keychain prompts, native interactive network controls, real tailnet permissions, sleep/wake on physical machines, and native VoiceOver/performance review remain pending alongside the existing interactive Mac checklist. The Mac release remains ad-hoc signed and not notarized.
 
 Version 1.1.0 release assets were built from commit `5c46a27d14c780883f546f85121a0520315f78a0`. The Mac bundle's embedded GitCommit and version were checked before publication. All nine download assets are covered by SHA256SUMS.txt. The final workflow also verified drag-to-Applications DMG mounting and app identity.
+
+## Version 1.2 Tailscale fixes
+
+On November 2, the installed server was inspected directly. Tailscale Serve existed, but the agent was absent because the headless root session had no systemd user bus. A system service was installed and enabled. An additional CLI bug required a home directory even with `--config` specified; the updated binary honors explicit paths without HOME/XDG environment variables.
+
+The new private listener on port 8791 was verified on the server's actual Tailscale IP without a token. A browser connection from the Mac's Tailscale IP loaded the live dashboard successfully; the established source IP was verified with the server socket table. No real usage screenshots were added to the repository.
+
+macOS 14+ ATS requires explicit IP/CIDR exceptions; the app bundle now permits the Tailscale ranges and loopback. A native packaged-app check runs against a synthetic Tailscale-range IP on the Mac CI runner to exercise URLSession and the actual bundle policy. Legacy authenticated listeners and relay enrollment retain their tokens.

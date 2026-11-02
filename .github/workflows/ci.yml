@@ -26,6 +26,17 @@ jobs:
           plutil -lint build/TokenCurrent.app/Contents/Info.plist
           codesign --verify --deep --strict --verbose=2 build/TokenCurrent.app
           lipo build/TokenCurrent.app/Contents/MacOS/TokenCurrent -verify_arch arm64 x86_64
+      - name: Check native HTTP pairing with a Tailscale-range IP
+        run: |
+          sudo ifconfig lo0 alias 100.127.255.254 netmask 255.255.255.255 up
+          python3 Tests/Network/fixture_server.py &
+          FIXTURE_PID=$!
+          trap 'kill "$FIXTURE_PID" || true; sudo ifconfig lo0 -alias 100.127.255.254' EXIT
+          for attempt in {1..30}; do
+            if curl --noproxy '*' --fail --silent http://100.127.255.254:8791/api/v1/mesh; then break; fi
+            sleep 0.2
+          done
+          build/TokenCurrent.app/Contents/MacOS/TokenCurrent --check-tailnet 100.127.255.254
       - name: Smoke test native launch
         run: |
           open build/TokenCurrent.app
