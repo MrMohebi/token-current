@@ -128,3 +128,23 @@ func TestDirectReadOnly(t *testing.T) {
 		t.Fatal("direct enroll allowed")
 	}
 }
+
+func TestTailnetAPIReadOnlyWithoutToken(t *testing.T) {
+	sample := snapshot("tailnet-machine", time.Now())
+	s := NewTailnet(func() protocol.Snapshot { return sample })
+	for _, path := range []string{"/api/v1/info", "/api/v1/mesh", "/api/v1/snapshot"} {
+		if w := call(s, "GET", path, "", nil); w.Code != 200 {
+			t.Fatal(path, w.Code)
+		}
+	}
+	for _, path := range []string{"/api/v1/instances", "/api/v1/report"} {
+		if w := call(s, "POST", path, "", nil); w.Code != 401 {
+			t.Fatal("tailnet allowed writes", path, w.Code)
+		}
+	}
+	// Neither the legacy listener nor the relay silently loses authentication.
+	legacy := NewDirect(protocol.Secret(), func() protocol.Snapshot { return sample })
+	if w := call(legacy, "GET", "/api/v1/mesh", "", nil); w.Code != 401 {
+		t.Fatal("legacy listener became public")
+	}
+}

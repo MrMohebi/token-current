@@ -23,23 +23,44 @@ struct MeshSettingsView: View {
             } header: { Text("Your machines, one meter") }
             if mesh.mode == .tailscale {
                 Section {
-                    Button("Discover Tailscale machines") { Task { await mesh.discover() } }.disabled(mesh.busy)
+                    Button("Find machines") { Task { await mesh.discover() } }.disabled(mesh.busy)
                     ForEach(mesh.discovered) { peer in
                         HStack {
-                            Label(peer.HostName, systemImage: peer.Online ? "circle.fill" : "circle")
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(peer.HostName)
+                                Text(peer.Online ? "Online" : "Offline").font(.caption).foregroundStyle(.secondary)
+                            }
                             Spacer()
-                            Button("Pair…") { name = peer.HostName; url = peer.url }
+                            if let address = peer.url {
+                                if mesh.peers.contains(where: { $0.url == address }) {
+                                    Label("Connected", systemImage: "checkmark.circle").font(.caption)
+                                } else {
+                                    Button("Connect") { Task { await mesh.connectTailscale(name: peer.HostName, address: address) } }
+                                        .disabled(mesh.busy || !peer.Online)
+                                }
+                            }
                         }
                     }
-                    Text("Discovery finds tailnet devices. Install the agent and enable Tailscale Serve on each device before pairing. Only paired devices contribute usage.")
+                    Text("Your tailnet handles access. Connect a machine running the agent. No pairing token, certificates, or relay needed.")
                         .font(.caption).foregroundStyle(.secondary)
-                    TextField("Machine name", text: $name)
-                    TextField("Agent URL", text: $url, prompt: Text("https://server.tailnet.ts.net:8790"))
-                    SecureField("Pairing token", text: $token)
-                    Button("Pair machine") {
-                        mesh.pair(name: name, url: url, token: token)
-                        if mesh.error == nil { name = ""; url = ""; token = "" }
-                    }.disabled(url.isEmpty || token.isEmpty)
+                    HStack {
+                        TextField("Server Tailscale IP", text: $url, prompt: Text("100.x.y.z"))
+                        Button(mesh.busy ? "Connecting…" : "Connect") {
+                            Task {
+                                await mesh.connectTailscale(name: "", address: url)
+                                if mesh.error == nil { url = "" }
+                            }
+                        }.disabled(mesh.busy || url.isEmpty)
+                    }
+                    DisclosureGroup("Advanced: older agents with tokens") {
+                        TextField("Machine name", text: $name)
+                        TextField("Legacy agent URL", text: $url)
+                        SecureField("Pairing token", text: $token)
+                        Button("Pair with token") {
+                            mesh.pair(name: name, url: url, token: token)
+                            if mesh.error == nil { name = ""; url = ""; token = "" }
+                        }.disabled(url.isEmpty || token.isEmpty)
+                    }
                     ForEach(mesh.peers) { peer in
                         HStack {
                             VStack(alignment: .leading) { Text(peer.name); Text(peer.url).font(.caption).foregroundStyle(.secondary) }
@@ -48,7 +69,7 @@ struct MeshSettingsView: View {
                         }
                     }
                     Link("Agent installation & Tailscale setup", destination: URL(string: "https://github.com/MrMohebi/token-current/blob/main/docs/NETWORK.md#direct-tailscale-mode")!)
-                } header: { Text("Direct connections") }
+                } header: { Text("Tailscale connections") }
             }
             if mesh.mode == .relay {
                 Section {

@@ -31,11 +31,12 @@ type state struct {
 	Devices    map[string]*Device `json:"devices"`
 }
 type Server struct {
-	mu     sync.Mutex
-	state  state
-	path   string
-	now    func() time.Time
-	direct func() protocol.Snapshot
+	mu      sync.Mutex
+	state   state
+	path    string
+	now     func() time.Time
+	direct  func() protocol.Snapshot
+	tailnet bool
 }
 
 func NewRelay(path string) (*Server, error) {
@@ -56,6 +57,11 @@ func NewRelay(path string) (*Server, error) {
 }
 func NewDirect(token string, get func() protocol.Snapshot) *Server {
 	return &Server{state: state{AdminToken: token, Devices: map[string]*Device{}}, now: time.Now, direct: get}
+}
+func NewTailnet(get func() protocol.Snapshot) *Server {
+	s := NewDirect("", get)
+	s.tailnet = true
+	return s
 }
 func (s *Server) AdminToken() string { return s.state.AdminToken }
 func tokenHash(token string) string {
@@ -78,6 +84,19 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) api(w http.ResponseWriter, r *http.Request) {
+	if s.tailnet && r.Method == "GET" {
+		switch r.URL.Path {
+		case "/api/v1/info":
+			write(w, 200, map[string]string{"mode": "direct", "version": "1", "authentication": "tailscale"})
+			return
+		case "/api/v1/mesh":
+			write(w, 200, s.mesh())
+			return
+		case "/api/v1/snapshot":
+			write(w, 200, s.direct())
+			return
+		}
+	}
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if token == "" || token == r.Header.Get("Authorization") {
 		writeError(w, 401, "a bearer token is required")

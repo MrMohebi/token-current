@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Run from an extracted release archive. Installs for the current user, never root.
+# Run from an extracted release archive. Monitors the installing user’s logs.
 cd "$(dirname "$0")"
 BIN_DIR="${TOKEN_CURRENT_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$BIN_DIR"
@@ -16,30 +16,51 @@ if [[ "${1:-}" == "--no-service" ]]; then
   echo "Installed. Run: \"$BIN_DIR/token-current-agent\" run"
   exit 0
 fi
-if ! command -v systemctl >/dev/null || ! systemctl --user show-environment >/dev/null 2>&1; then
-  echo "Installed. A systemd user session is unavailable. Run: \"$BIN_DIR/token-current-agent\" run"
-  exit 0
+# A headless/root SSH session often has no systemd user bus. Use a system
+# service for root installs, rather than reporting success with no running agent.
+SERVICE_MODE=user
+UNIT_DIR="$CONFIG_BASE/systemd/user"
+SERVICE_ACCOUNT=""
+WANTED_BY=default.target
+if [[ "$EUID" == 0 && -d /run/systemd/system ]]; then
+  SERVICE_MODE=system
+  UNIT_DIR=/etc/systemd/system
+  SERVICE_ACCOUNT="User=root"
+  WANTED_BY=multi-user.target
+elif ! command -v systemctl >/dev/null || ! systemctl --user show-environment >/dev/null 2>&1; then
+  echo 'Agent installed, but no background service could be started: this SSH session has no systemd user bus.' >&2
+  echo "Run \"$BIN_DIR/token-current-agent\" run, or install from a systemd user session after enabling linger." >&2
+  exit 1
 fi
-mkdir -p "$CONFIG_BASE/systemd/user"
-# systemd expands %, so escape it in file paths.
+mkdir -p "$UNIT_DIR"
 SERVICE_BINARY="${BIN_DIR//%/%%}/token-current-agent"
 SERVICE_CONFIG="${CONFIG_BASE//%/%%}/Token Current/agent.json"
-cat > "$CONFIG_BASE/systemd/user/token-current-agent.service" <<UNIT
+cat > "$UNIT_DIR/token-current-agent.service" <<UNIT
 [Unit]
 Description=Token Current usage agent
-After=network-online.target
+After=network-online.target tailscaled.service
 [Service]
+$SERVICE_ACCOUNT
 ExecStart="$SERVICE_BINARY" run --config "$SERVICE_CONFIG"
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 UMask=0077
 [Install]
-WantedBy=default.target
+WantedBy=$WANTED_BY
 UNIT
-systemctl --user daemon-reload
-systemctl --user enable --now token-current-agent.service
-systemctl --user restart token-current-agent.service
-echo "Installed and running. Pairing token: $BIN_DIR/token-current-agent token"
-echo "For Tailscale: $BIN_DIR/token-current-agent tailscale"
-echo "For an always-on server: sudo loginctl enable-linger \"$USER\""
+service_control() {
+  if [[ "$SERVICE_MODE" == system ]]; then systemctl "$@"; else systemctl --user "$@"; fi
+}
+service_control daemon-reload
+service_control enable --now token-current-agent.service
+service_control restart token-current-agent.service
+# Enabling Tailscale on an already-signed-in machine needs no credentials.
+if command -v tailscale >/dev/null 2>&1 && "$BIN_DIR/token-current-agent" tailscale; then
+  service_control restart token-current-agent.service
+fi
+if ! service_control is-active --quiet token-current-agent.service; then
+  echo 'Agent service failed to start. Check: journalctl -u token-current-agent' >&2
+  exit 1
+fi
+echo "Installed and running ($SERVICE_MODE service). On your Mac: Settings → Network → Tailscale → Connect."

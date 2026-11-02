@@ -9,8 +9,8 @@ Choose one connection method:
 | Best for | Your own machines on one tailnet | A central dashboard and fleet management |
 | Token Current server needed | No | Yes, on your server |
 | Combined Mac menu bar | Yes | Yes |
-| Browser view | Each agent's own meter | Combined network and per-machine meters |
-| Pairing | One read token per machine | One management token and separate device tokens |
+| Browser view | Each agent's own meter, no sign-in | Combined network and per-machine meters |
+| Pairing | Click Connect; no token | One management token and separate device tokens |
 | Network | Private Tailscale HTTPS | Your HTTPS domain, or private Tailscale Serve |
 
 **Machine map lines show connections to the collector.** Tailscale handles the underlying mesh network; Token Current does not implement peer gossip or route traffic. You can select a single machine or **All machines** in the Mac popover. The same selection applies to the headline, graph, provider rows, and totals.
@@ -27,7 +27,7 @@ Run as your ordinary user, without sudo:
 curl -fsSL https://raw.githubusercontent.com/MrMohebi/token-current/main/Scripts/install_agent.sh | bash
 ```
 
-This downloads the correct amd64/arm64 archive, verifies the release checksum, installs `~/.local/bin/token-current-agent`, and starts a systemd **user** service when available. Add `~/.local/bin` to PATH if your shell does not already include it. You can [read the installer](../Scripts/install_agent.sh) first.
+This downloads the correct amd64/arm64 archive, verifies the release checksum, installs `~/.local/bin/token-current-agent`, and starts a systemd service. Root installs use a system service; regular user installs use a user service. Add `~/.local/bin` to PATH if your shell does not already include it. You can [read the installer](../Scripts/install_agent.sh) first.
 
 For a server that should keep monitoring after logout:
 
@@ -35,7 +35,7 @@ For a server that should keep monitoring after logout:
 sudo loginctl enable-linger "$USER"
 ```
 
-Without a systemd user session, the installer tells you how to run the agent in the foreground. For manual installation, download the Linux archive from [Releases](https://github.com/MrMohebi/token-current/releases/latest), extract it, then run `bash install.sh` (or `bash install.sh --no-service`).
+Without a usable service manager, installation reports a failure and explains how to run the agent in the foreground. For manual installation, download the Linux archive from [Releases](https://github.com/MrMohebi/token-current/releases/latest), extract it, then run `bash install.sh` (or `bash install.sh --no-service`).
 
 ### Windows
 
@@ -60,39 +60,59 @@ Agents have no AI provider API keys. Their pairing tokens authorize Token Curren
 
 ## Direct Tailscale mode
 
-No Token Current relay server is needed. Tailscale must already be installed and signed into the same tailnet on your Mac and each remote machine. Tailnet access rules must allow your Mac to reach port **8790** on those machines.
+**No Token Current relay, pairing token, HTTPS certificates, or Tailscale Serve is needed.** Tailscale handles encryption and access. Your tailnet rules must allow the Mac to reach the agent on port **8791**.
 
-On each remote machine, enable private HTTPS forwarding to its local agent:
+### On the server
+
+With Tailscale already signed in, run or re-run the Linux installer:
 
 ```bash
-~/.local/bin/token-current-agent tailscale
-~/.local/bin/token-current-agent token
+curl -fsSL https://raw.githubusercontent.com/MrMohebi/token-current/main/Scripts/install_agent.sh | bash
 ```
 
-Windows equivalent:
+The installer enables Tailscale access and restarts the agent automatically. Root installs on headless servers use a boot-persistent system service; regular signed-in users use their systemd user service. Run it as the account whose Claude/Codex logs you want to measure. An update preserves your existing paths, history, and legacy tokens.
 
-```powershell
-& $Agent tailscale
-& $Agent token
+If you installed the binary manually:
+
+```bash
+token-current-agent tailscale
+systemctl --user restart token-current-agent
 ```
 
-The first command configures `tailscale serve --bg --https=8790 http://127.0.0.1:8790` and prints your direct URL. Tailscale may ask you to enable HTTPS in your tailnet first. An existing incompatible Serve configuration on port 8790 is preserved and reported as an error. You may need your administrator to grant Serve/operator access; run the displayed Tailscale command with the appropriate account if necessary.
+For a root/system install, use `systemctl restart token-current-agent` instead. On Windows, run the updated `install.ps1`; it enables Tailscale automatically when its CLI is installed. You can also run `& $Agent tailscale`, then restart the scheduled task.
 
-The second command prints the machine's **read token**. Treat it as a password: it grants access to this machine's usage, but cannot change relay enrollment.
+### On the Mac
 
-On your Mac:
+1. Update to **Token Current 1.2 or later**.
+2. Open **Settings → Network** and choose **Tailscale**.
+3. Click **Find machines**, then **Connect** beside your server.
 
-1. Open **Token Current → Settings → Network**.
-2. Choose **Direct / Tailscale**.
-3. Click **Discover Tailscale machines**, then **Pair…** beside a device. Discovery needs the Tailscale CLI; you can always paste a URL manually.
-4. Paste its read token and click **Pair machine**.
-5. Repeat for your other machines. Select **All machines** in the menu bar popover.
+That is all. You can also enter its **100.x.y.z Tailscale IP** directly and click Connect. Token Current checks the agent before saving the connection. Its browser meter opens at `http://100.x.y.z:8791` with no sign-in form.
 
-Discovery lists tailnet devices; it does not install an agent or automatically trust them. Only machines you pair contribute usage. The app supports up to 32 direct peers. HTTPS addresses look like `https://my-server.my-tailnet.ts.net:8790`. Open that same URL in a browser and enter its read token to see that agent's own meter.
+Direct connections use the machine's private IP, so MagicDNS and tailnet HTTPS do not have to be enabled. The agent binds its tokenless, read-only endpoint only to its own Tailscale addresses. Its authenticated local API on port 8790 and the public relay's tokens remain available for advanced setups. Only devices allowed by your tailnet's network policy can reach the private endpoint.
 
-The default listener is **127.0.0.1:8790**, so it is not exposed on public or LAN interfaces. Tailscale Serve provides private HTTPS access. Advanced users may initialize with `--listen 100.x.y.z:8790` and pair `http://100.x.y.z:8790` over the encrypted tailnet; the automatic Serve helper requires the default loopback listener.
+### Updating from 1.1
 
-Tailscale is a separate product and may use its own coordination or DERP relays. “No relay” here means **no Token Current relay** is required. See the [official Serve documentation](https://tailscale.com/docs/features/tailscale-serve).
+Update the server agent and re-run the installer; then replace the Mac app using the new DMG. Remove the old paired entry in Network settings and click Connect beside the discovered server. The old token-based flow is kept under **Advanced: older agents with tokens**.
+
+Existing Tailscale Serve mappings are left alone. You can remove a mapping you no longer use yourself. Version 1.2 never requires creating or modifying a Serve mapping.
+
+### If the server appears but will not connect
+
+Discovery shows that Tailscale knows the machine; it does not prove its agent is running. Check the service:
+
+```bash
+# Root/system install:
+systemctl status token-current-agent
+journalctl -u token-current-agent -n 30 --no-pager
+# Regular user install:
+systemctl --user status token-current-agent
+journalctl --user -u token-current-agent -n 30 --no-pager
+```
+
+A 1.1 installer could finish on a headless server with no user bus and leave no running agent. Version 1.2 fixes root installs and reports a clear failure if it cannot create a background service. For a non-root SSH account without a user bus, enable lingering and establish a systemd user session, or supervise `token-current-agent run` with your server's process manager.
+
+From the Mac, open `http://SERVER_TAILSCALE_IP:8791/healthz`: it should return `{"ok":true}`. If it does not, check that both devices are online in Tailscale, that the service is running, and that port 8791 is allowed by the tailnet and host firewall. No token should be pasted for the new Tailscale connection.
 
 ## Self-hosted relay and combined browser dashboard
 
@@ -195,9 +215,9 @@ token-current-agent init --claude-home /path/to/.claude --codex-home /path/to/.c
 
 `CLAUDE_CONFIG_DIR` and `CODEX_HOME` are respected at initialization. Claude's XDG folder is detected if the default folder is absent. You can edit paths in `agent.json` while the agent is stopped; restart afterward. The agent must be able to read its user's source logs. WSL logs require accessible Windows paths when using the Windows agent; running the Linux agent inside WSL is usually simpler.
 
-Run the same installer again to update the binary; configuration and history remain. Linux logs: `journalctl --user -u token-current-agent -f`. Windows task status: `Get-ScheduledTaskInfo -TaskName 'Token Current Agent'`. To troubleshoot foreground output, stop its background task and run `token-current-agent run`.
+Run the same installer again to update the binary; configuration and history remain. Linux logs: `journalctl --user -u token-current-agent -f` (omit `--user` for a root/system install). Windows task status: `Get-ScheduledTaskInfo -TaskName 'Token Current Agent'`. To troubleshoot foreground output, stop its background task and run `token-current-agent run`.
 
-Linux removal:
+Linux removal (omit `--user` and use `/etc/systemd/system/token-current-agent.service` for root/system installs):
 
 ```bash
 systemctl --user disable --now token-current-agent

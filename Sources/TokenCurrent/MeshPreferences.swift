@@ -5,13 +5,14 @@ enum MeshMode: String, Codable, CaseIterable, Identifiable {
     case local, tailscale, relay
     var id: String { rawValue }
     var title: String {
-        switch self { case .local: "This Mac"; case .tailscale: "Direct / Tailscale"; case .relay: "Self-hosted relay" }
+        switch self { case .local: "This Mac"; case .tailscale: "Tailscale"; case .relay: "Self-hosted relay" }
     }
 }
 struct PairedMachine: Codable, Identifiable, Sendable {
     var id: String
     var name: String
     var url: String
+    var trustsTailscale: Bool? = nil
 }
 struct MeshPreferences: Codable {
     var mode: MeshMode = .local

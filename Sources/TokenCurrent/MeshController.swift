@@ -65,6 +65,33 @@ final class MeshController {
             changed()
         } catch { self.error = error.localizedDescription }
     }
+    func connectTailscale(name: String, address: String) async {
+        guard !busy else { return }
+        busy = true; defer { busy = false }
+        let version = generation
+        do {
+            guard let origin = MeshAPI.tailscaleOrigin(address) else {
+                error = "Enter the server’s Tailscale IP, such as 100.72.15.20."
+                return
+            }
+            let api = try MeshAPI(origin: origin, trustTailscale: true)
+            let mesh = try await api.mesh()
+            guard mesh.machines.count == 1, let machine = mesh.machines.first else { throw MeshAPIError.invalid }
+            guard version == generation else { return }
+            guard settings.peers.count < 32 || settings.peers.contains(where: { $0.url == origin }) else { throw MeshAPIError.invalid }
+            let id = settings.peers.first(where: { $0.url == origin })?.id ?? UUID().uuidString
+            settings.peers.removeAll { $0.id == id }
+            settings.peers.append(PairedMachine(id: id, name: name.isEmpty ? machine.name : name, url: origin, trustsTailscale: true))
+            PairingKeychain.remove(id)
+            changed()
+            remote = [machine]
+        } catch let failure as MeshAPIError {
+            if case .rejected(401) = failure { error = "This agent still requires a token. Update it and run token-current-agent tailscale, then restart its service." }
+            else { error = failure.localizedDescription }
+        } catch {
+            self.error = "Cannot reach the agent at \(address). Run token-current-agent tailscale on that server, then restart its service. \(error.localizedDescription)"
+        }
+    }
     func unpair(_ id: String) {
         settings.peers.removeAll { $0.id == id }; PairingKeychain.remove(id); changed()
     }
@@ -141,16 +168,17 @@ final class MeshController {
             } catch { if version == generation { self.error = error.localizedDescription } }
         } else {
             let connections = settings.peers.compactMap { peer -> (PairedMachine, String)? in
-                PairingKeychain.read(peer.id).map { (peer, $0) }
+                if peer.trustsTailscale == true { return (peer, "") }
+                return PairingKeychain.read(peer.id).map { (peer, $0) }
             }
             let results = await withTaskGroup(of: (String, NetworkMachine?, String?).self) { group in
                 for (peer, token) in connections {
                     group.addTask {
                         do {
-                            let mesh = try await MeshAPI(origin: peer.url, token: token).mesh()
+                            let mesh = try await MeshAPI(origin: peer.url, token: token, trustTailscale: peer.trustsTailscale == true).mesh()
                             guard mesh.machines.count == 1, let machine = mesh.machines.first else { throw MeshAPIError.invalid }
                             return (peer.id, machine, nil)
-                        } catch { return (peer.id, nil, "\(peer.name): connection failed. Check its URL, token, and Tailscale status.") }
+                        } catch { return (peer.id, nil, "\(peer.name): \(error.localizedDescription). Check that its agent service is running.") }
                     }
                 }
                 var collected: [(String, NetworkMachine?, String?)] = []

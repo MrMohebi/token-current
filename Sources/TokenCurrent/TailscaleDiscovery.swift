@@ -1,13 +1,24 @@
 #if os(macOS)
 import Foundation
+import TokenCurrentCore
 
 struct TailnetPeer: Decodable, Identifiable, Sendable {
-    var id: String { DNSName }
+    var id: String { TailscaleIPs.first ?? DNSName }
     var HostName: String
     var DNSName: String
+    var TailscaleIPs: [String]
     var Online: Bool
     var OS: String
-    var url: String { "https://\(DNSName.trimmingCharacters(in: CharacterSet(charactersIn: "."))):8790" }
+    var url: String? { TailscaleIPs.compactMap { MeshAPI.tailscaleOrigin($0) }.first }
+    private enum CodingKeys: String, CodingKey { case HostName, DNSName, TailscaleIPs, Online, OS }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        HostName = try c.decodeIfPresent(String.self, forKey: .HostName) ?? "Machine"
+        DNSName = try c.decodeIfPresent(String.self, forKey: .DNSName) ?? ""
+        TailscaleIPs = try c.decodeIfPresent([String].self, forKey: .TailscaleIPs) ?? []
+        Online = try c.decodeIfPresent(Bool.self, forKey: .Online) ?? false
+        OS = try c.decodeIfPresent(String.self, forKey: .OS) ?? ""
+    }
 }
 enum TailscaleDiscovery {
     static func discover() async throws -> [TailnetPeer] {
@@ -29,7 +40,7 @@ enum TailscaleDiscovery {
             guard process.terminationStatus == 0 else { throw DiscoveryError.unavailable }
             let status = try JSONDecoder().decode(Status.self, from: data)
             guard status.BackendState == "Running" else { throw DiscoveryError.unavailable }
-            return (status.Peer ?? [:]).values.filter { !$0.DNSName.isEmpty }.sorted { $0.HostName < $1.HostName }
+            return (status.Peer ?? [:]).values.filter { $0.url != nil }.sorted { $0.HostName < $1.HostName }
         }.value
     }
     enum DiscoveryError: Error, LocalizedError {

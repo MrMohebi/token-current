@@ -1,10 +1,10 @@
 'use strict';
 const $ = id => document.getElementById(id);
-let token = '', mode = 'relay', selected = null, mesh = { machines: [] }, timer, history = [];
+let token = '', tailnetSession = false, mode = 'relay', selected = null, mesh = { machines: [] }, timer, history = [];
 const compact = number => new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(number);
 const currentDay = () => new Date().toISOString().slice(0, 10);
 async function api(path, method = 'GET', body) {
-  const response = await fetch('/api/v1/' + path, { method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(5000) });
+  const response = await fetch('/api/v1/' + path, { method, headers: { ...(token ? {Authorization: 'Bearer ' + token} : {}), 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(5000) });
   if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error || `Request failed (${response.status})`); }
   return response.status === 204 ? null : response.json();
 }
@@ -67,7 +67,7 @@ function drawHistory() {
   $('history').replaceChildren(svg('polyline', { points: history.map(p => `${(p.time - now + 59000) * 300 / 59000},${85 - p.value / peak * 80}`).join(' '), fill: 'none', stroke: 'var(--cyan)', 'stroke-width': 2 }));
 }
 async function refresh() { mesh = await api('mesh'); $('notice').textContent = ''; $('connection').textContent = 'Connected'; render(); drawHistory(); }
-async function poll() { clearTimeout(timer); try { await refresh(); } catch (e) { $('connection').textContent = 'Reconnecting'; $('notice').textContent = e.message; render(); drawHistory(); } if (token) timer = setTimeout(poll, 1000); }
+async function poll() { clearTimeout(timer); try { await refresh(); } catch (e) { $('connection').textContent = 'Reconnecting'; $('notice').textContent = e.message; render(); drawHistory(); } if (token || tailnetSession) timer = setTimeout(poll, 1000); }
 $('login-form').addEventListener('submit', async e => { e.preventDefault(); token = $('token').value.trim(); try { const info = await api('info'); mode = info.mode; await refresh(); $('login').hidden = true; $('dashboard').hidden = false; $('session').hidden = false; $('add').hidden = mode !== 'relay'; $('mode').textContent = mode === 'relay' ? 'Self-hosted relay' : 'Direct agent'; $('token').value = ''; poll(); } catch (error) { token = ''; $('login-error').textContent = error.message; } });
 $('logout').addEventListener('click', () => { token = ''; clearTimeout(timer); mesh = { machines: [] }; history = []; $('dashboard').hidden = true; $('session').hidden = true; $('login').hidden = false; $('device-token').value = ''; $('enroll').close(); });
 $('provider').addEventListener('change', () => { history = []; render(); }); $('show-all').addEventListener('click', () => select(null));
@@ -78,3 +78,14 @@ function showEnrollment(data) { $('copy-token').textContent = 'Copy token'; $('e
 $('enroll-form').addEventListener('submit', async e => { e.preventDefault(); try { const data = await api('instances', 'POST', { name: $('name').value.trim(), platform: $('platform').value }); showEnrollment(data); await refresh(); } catch (error) { $('enroll-error').textContent = error.message; } });
 async function rotateToken(machine) { if (!confirm(`Replace ${machine.name}'s device token? Its old connection will stop until reconfigured.`)) return; try { showEnrollment(await api('instances/' + encodeURIComponent(machine.id) + '/rotate', 'POST')); await refresh(); } catch (e) { $('notice').textContent = e.message; } }
 $('copy-token').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('device-token').value); $('copy-token').textContent = 'Copied'; } catch { $('device-token').select(); $('enroll-error').textContent = 'Select and copy the token manually in this browser.'; } });
+
+// The private IP listener trusts the tailnet. Open its own dashboard directly.
+fetch('/api/v1/info', {signal:AbortSignal.timeout(3000)}).then(r => r.ok ? r.json() : null).then(async info => {
+  if (info?.authentication !== 'tailscale') return;
+  mode = 'direct';
+  await refresh();
+  $('login').hidden = true; $('dashboard').hidden = false; $('session').hidden = false;
+  $('add').hidden = true; $('logout').hidden = true; $('mode').textContent = 'Tailscale agent';
+  tailnetSession = true;
+  poll();
+}).catch(() => {});

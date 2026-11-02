@@ -98,7 +98,7 @@ class NetworkEndToEnd(unittest.TestCase):
                     except subprocess.TimeoutExpired: p.kill();p.wait()
 
     @unittest.skipIf(os.name == 'nt', 'Linux installer and POSIX CLI fixture')
-    def test_linux_update_and_tailscale_serve_helper(self):
+    def test_linux_update_and_simple_tailscale_setup(self):
         import shutil
         with tempfile.TemporaryDirectory() as directory:
             d=Path(directory);stage=d/'archive';stage.mkdir()
@@ -119,17 +119,19 @@ class NetworkEndToEnd(unittest.TestCase):
                 self.assertIsNone(p.poll(), 'Updating killed the running process')
             finally:
                 p.terminate();p.wait(timeout=5)
-            # Exercise Tailscale setup without modifying a real tailnet.
+            # Setup trusts the private Tailscale IP, without touching Serve or HTTPS.
             original['listen']='127.0.0.1:8790';config.write_text(json.dumps(original))
             fake=d/'bin'/'tailscale'
-            fake.write_text("#!/usr/bin/env python3\nimport json,os,sys\nfrom pathlib import Path\na=sys.argv[1:]\nif a==['status','--json']: print(json.dumps({'BackendState':'Running','Self':{'DNSName':'fixture.tailnet.ts.net.'},'Peer':{}}))\nelif a==['serve','status','--json']: print(Path(os.environ['SERVE_FIXTURE']).read_text())\nelse: Path(os.environ['SERVE_CALL']).write_text(json.dumps(a))\n")
-            fake.chmod(0o755);fixture=d/'serve.json';call=d/'call.json';fixture.write_text('{}')
-            env.update(PATH=str(d/'bin')+os.pathsep+env['PATH'], SERVE_FIXTURE=str(fixture), SERVE_CALL=str(call))
+            fake.write_text("#!/usr/bin/env python3\nimport json,sys\na=sys.argv[1:]\nif a==['status','--json']: print(json.dumps({'BackendState':'Running','Self':{'TailscaleIPs':['100.72.15.20']},'Peer':{}}))\nelse: sys.exit(99)\n")
+            fake.chmod(0o755)
+            env.update(PATH=str(d/'bin')+os.pathsep+env['PATH'])
             result=subprocess.run([str(installed),'tailscale'],env=env,check=True,capture_output=True,text=True)
-            self.assertIn('https://fixture.tailnet.ts.net:8790',result.stdout)
-            self.assertEqual(json.loads(call.read_text()),['serve','--bg','--https=8790','http://127.0.0.1:8790'])
-            call.unlink();fixture.write_text('{"Web":{"fixture:8790":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:9000"}}}}}')
-            result=subprocess.run([str(installed),'tailscale'],env=env,capture_output=True,text=True)
-            self.assertNotEqual(result.returncode,0);self.assertFalse(call.exists(),'Overwrote another Serve mapping')
+            self.assertIn('http://100.72.15.20:8791',result.stdout)
+            self.assertTrue(json.loads(config.read_text())['tailscale'])
+            self.assertEqual(json.loads(config.read_text())['readToken'], original['readToken'])
+            # Explicit configuration works under systemd without HOME/XDG variables.
+            service_env={k:v for k,v in env.items() if k not in ('HOME','XDG_CONFIG_HOME')}
+            result=subprocess.run([str(installed),'peers','--config',str(config)],env=service_env,capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
 
 if __name__ == '__main__': unittest.main()

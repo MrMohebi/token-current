@@ -67,7 +67,7 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Token Current", value: "1.1.0")
+                LabeledContent("Token Current", value: "1.2.0")
                 Button("Quit Token Current") { NSApp.terminate(nil) }
             }
         }

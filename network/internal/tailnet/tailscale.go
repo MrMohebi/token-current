@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/MrMohebi/token-current/network/internal/protocol"
+	"net"
 	"os/exec"
 	"runtime"
-	"strings"
 )
 
 type Peer struct {
@@ -49,4 +50,11 @@ func Read(ctx context.Context) (Status, error) {
 	}
 	return s, nil
 }
-func (p Peer) URL() string { return "https://" + strings.TrimSuffix(p.DNSName, ".") + ":8790" }
+func (p Peer) URL() string {
+	for _, raw := range p.TailscaleIPs {
+		if ip := net.ParseIP(raw); ip != nil && protocol.IsTailscaleIP(ip) {
+			return "http://" + net.JoinHostPort(ip.String(), "8791")
+		}
+	}
+	return ""
+}

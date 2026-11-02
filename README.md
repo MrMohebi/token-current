@@ -19,9 +19,9 @@ Think of an internet speed meter, but for AI token consumption. Glance at the ra
 
 ## Connect a fleet
 
-**New in 1.1:** combine your Mac, Linux servers, and Windows PCs in one menu bar meter. See each machine on a connection map and switch between individual or combined usage.
+**New in 1.2:** combine your Mac, Linux servers, and Windows PCs in one menu bar meter. See each machine on a connection map and switch between individual or combined usage.
 
-- **Direct / Tailscale:** pair machines privately, with no Token Current relay server.
+- **Tailscale:** click Connect beside your server. No pairing tokens, certificates, or Token Current relay server.
 - **Self-hosted relay:** Docker Compose server, combined browser dashboard, and machine management from the Mac app.
 - **Background agents:** standalone Linux and Windows binaries; no changes to your AI tools.
 
@@ -214,7 +214,7 @@ python3 -m unittest discover -s Tests/Installer -v
 bash -n Scripts/*.sh
 ```
 
-The [macOS workflow](https://github.com/MrMohebi/token-current/actions) builds and checks the universal app, runs tests, verifies its signature, smoke-tests native launch, and prepares download archives. The 33 Swift scenarios passed on macOS. Network tests and daemon startup checks also run on Linux, Windows, and macOS, with a real Windows scheduled-task install and Docker relay check. The six installer scenarios cover installation, updates, unsupported systems, invalid identity/signature/checksum, and failed copying.
+The [macOS workflow](https://github.com/MrMohebi/token-current/actions) builds and checks the universal app, runs tests, verifies its signature, smoke-tests native launch, and prepares download archives. The 34 Swift scenarios passed on macOS. Network tests and daemon startup checks also run on Linux, Windows, and macOS, with a real Windows scheduled-task install and Docker relay check. The six installer scenarios cover installation, updates, unsupported systems, invalid identity/signature/checksum, and failed copying.
 
 The core also tests on Linux with Swift 6 and `libsqlite3-dev`; this does not validate the native interface. Interactive visual, keyboard/VoiceOver, login-item, and Instruments review remain pending. See [verification evidence](docs/VERIFICATION.md) and the [Mac validation checklist](docs/MAC_VALIDATION.md).
 

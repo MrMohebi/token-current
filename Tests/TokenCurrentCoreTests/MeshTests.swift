@@ -36,6 +36,17 @@ final class MeshTests: XCTestCase {
         XCTAssertNil(MeshAccounting.combine([a], at: now).rate(for: nil))
         XCTAssertFalse(MeshAccounting.combine([a], at: now).importing)
     }
+    func testSimpleTailnetPairingNeedsNoTokenOrMagicDNS() throws {
+        XCTAssertEqual(MeshAPI.tailscaleOrigin("100.72.15.20"), "http://100.72.15.20:8791")
+        XCTAssertEqual(MeshAPI.tailscaleOrigin("100.72.15.20:8791"), "http://100.72.15.20:8791")
+        XCTAssertEqual(MeshAPI.tailscaleOrigin("fd7a:115c:a1e0::1"), "http://[fd7a:115c:a1e0::1]:8791")
+        XCTAssertNil(MeshAPI.tailscaleOrigin("192.168.1.2"))
+        XCTAssertNil(MeshAPI.tailscaleOrigin("0100.72.15.20"))
+        XCTAssertNoThrow(try MeshAPI(origin: "http://100.72.15.20:8791", trustTailscale: true))
+        XCTAssertThrowsError(try MeshAPI(origin: "http://100.72.15.20:8791"))
+        XCTAssertThrowsError(try MeshAPI(origin: "https://example.com", trustTailscale: true))
+        XCTAssertThrowsError(try MeshAPI(origin: "http://127.0.0.1:8791", trustTailscale: true))
+    }
     func testEndpointTransportRestrictions() {
         for endpoint in ["https://meter.example.com", "http://127.0.0.1:8787", "http://100.100.1.2:8790", "http://[fd7a:115c:a1e0::1]:8790"] {
             XCTAssertNotNil(MeshAPI.endpoint(endpoint), endpoint)

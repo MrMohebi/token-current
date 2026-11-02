@@ -30,9 +30,29 @@ public struct MeshAPI: Sendable {
     }()
     public let origin: URL
     public let token: String
-    public init(origin: String, token: String) throws {
-        guard let u = Self.endpoint(origin), !token.isEmpty else { throw MeshAPIError.endpoint }
+    public init(origin: String, token: String = "", trustTailscale: Bool = false) throws {
+        guard let u = Self.endpoint(origin), !token.isEmpty || (trustTailscale && Self.isTailscaleHost(u.host ?? "")) else { throw MeshAPIError.endpoint }
         self.origin = u; self.token = token
+    }
+    public static func isTailscaleHost(_ raw: String) -> Bool {
+        let host = raw.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        let numbers = parts.count == 4 ? parts.compactMap { UInt8($0) } : []
+        let v4 = numbers.count == 4 && numbers.map { String($0) }.joined(separator: ".") == host && numbers[0] == 100 && (64...127).contains(numbers[1])
+        return v4 || host.hasPrefix("fd7a:115c:a1e0:")
+    }
+    public static func tailscaleOrigin(_ address: String) -> String? {
+        let raw = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        if raw.contains("://") {
+            guard let url = endpoint(raw), isTailscaleHost(url.host ?? "") else { return nil }
+            return url.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        }
+        let host = raw.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        if isTailscaleHost(host) {
+            return "http://\(host.contains(":") ? "[\(host)]" : host):8791"
+        }
+        if let url = endpoint("http://" + raw), isTailscaleHost(url.host ?? "") { return url.absoluteString }
+        return nil
     }
     public static func endpoint(_ raw: String) -> URL? {
         guard let c = URLComponents(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -64,7 +84,7 @@ public struct MeshAPI: Sendable {
     private func request(_ method: String, _ path: String, body: Data? = nil) async throws -> Data {
         var request = URLRequest(url: origin.appending(path: path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))))
         request.httpMethod = method; request.timeoutInterval = 3
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if !token.isEmpty { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
         #if os(macOS)

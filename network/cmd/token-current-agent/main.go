@@ -17,7 +17,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -36,6 +35,7 @@ type config struct {
 	CodexHome    string `json:"codexHome"`
 	RelayURL     string `json:"relayURL,omitempty"`
 	PublishToken string `json:"publishToken,omitempty"`
+	Tailscale    bool   `json:"tailscale,omitempty"`
 }
 
 func main() {
@@ -51,20 +51,25 @@ func run() error {
 		command = args[0]
 		args = args[1:]
 	}
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return err
+	base, _ := os.UserConfigDir()
+	var defaultConfig string
+	if base != "" {
+		defaultConfig = filepath.Join(base, "Token Current", "agent.json")
 	}
+	var err error
 	flags := flag.NewFlagSet("token-current-agent "+command, flag.ContinueOnError)
-	path := flags.String("config", filepath.Join(base, "Token Current", "agent.json"), "configuration file")
+	path := flags.String("config", defaultConfig, "configuration file")
 	background := flags.Bool("background", false, "hide the Windows console for a background task")
 	name := flags.String("name", "", "machine display name")
-	listen := flags.String("listen", "127.0.0.1:8790", "HTTP address; use Tailscale Serve to expose it privately")
+	listen := flags.String("listen", "127.0.0.1:8790", "authenticated local HTTP address")
 	claude := flags.String("claude-home", "", "Claude data home")
 	codex := flags.String("codex-home", "", "Codex data home")
 	relayURL := flags.String("relay", "", "relay origin for configure")
 	if err = flags.Parse(args); err != nil {
 		return err
+	}
+	if *path == "" {
+		return errors.New("set --config to a configuration file path")
 	}
 	var cfg config
 	if command == "init" {
@@ -102,7 +107,7 @@ func run() error {
 			return err
 		}
 		fmt.Println("Configured", *path)
-		fmt.Println("Run token-current-agent run. For a direct connection, token-current-agent token prints your pairing token.")
+		fmt.Println("Run token-current-agent tailscale to enable simple private connections, then start the agent service.")
 		return nil
 	}
 	if err = persist.Load(*path, &cfg); err != nil {
@@ -144,50 +149,22 @@ func run() error {
 		fmt.Println("Relay configured. Restart the daemon to apply it.")
 		return nil
 	case "tailscale":
-		if cfg.Listen != "127.0.0.1:8790" {
-			return errors.New("Tailscale Serve setup expects listen 127.0.0.1:8790")
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		status, e := tailnet.Read(ctx)
 		if e != nil {
 			return e
 		}
-		current, e := exec.CommandContext(ctx, tailnet.Binary(), "serve", "status", "--json").Output()
-		if e != nil {
-			return errors.New("could not inspect existing Tailscale Serve configuration")
+		if status.Self == nil || status.Self.URL() == "" {
+			return errors.New("Tailscale has no assigned IP address")
 		}
-		var serveConfig struct {
-			TCP map[string]struct {
-				HTTPS      bool
-				TCPForward string
-			}
-			Web map[string]struct {
-				Handlers map[string]struct{ Proxy string }
-			}
+		cfg.Tailscale = true
+		if err = persist.Save(*path, cfg); err != nil {
+			return err
 		}
-		if json.Unmarshal(current, &serveConfig) != nil {
-			return errors.New("unsupported Tailscale Serve configuration; existing configuration was preserved")
-		}
-		if tcp, ok := serveConfig.TCP["8790"]; ok && (!tcp.HTTPS || tcp.TCPForward != "") {
-			return errors.New("Tailscale Serve port 8790 is already in use; existing configuration was preserved")
-		}
-		for host, site := range serveConfig.Web {
-			if strings.HasSuffix(host, ":8790") && (len(site.Handlers) != 1 || site.Handlers["/"].Proxy != "http://127.0.0.1:8790") {
-				return errors.New("Tailscale Serve port 8790 is already in use; existing configuration was preserved")
-			}
-		}
-		command := exec.CommandContext(ctx, tailnet.Binary(), "serve", "--bg", "--https=8790", "http://127.0.0.1:8790")
-		command.Stdout = os.Stdout
-		command.Stderr = os.Stderr
-		command.Stdin = os.Stdin
-		if e = command.Run(); e != nil {
-			return errors.New("Tailscale Serve could not be enabled; check your tailnet HTTPS/Serve permissions")
-		}
-		if status.Self != nil {
-			fmt.Println("Direct URL:", status.Self.URL())
-		}
-		fmt.Println("Use token-current-agent token to read the pairing token.")
+		fmt.Println("Tailscale access enabled. No token, certificates, or Serve setup required.")
+		fmt.Println("Direct address:", status.Self.URL())
+		fmt.Println("Restart the agent service to apply. On the Mac, choose Network → Tailscale → Connect.")
 		return nil
 	case "peers":
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -226,6 +203,9 @@ func serve(cfg config, path string) error {
 			return err
 		}
 		go publish(ctx, cfg, updates)
+	}
+	if cfg.Tailscale {
+		go serveTailnet(ctx, get)
 	}
 	go func() { errorsChannel <- httpServer.ListenAndServe() }()
 	go func() {
